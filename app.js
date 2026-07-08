@@ -14,7 +14,7 @@ const addBtn = document.getElementById('addBtn');
 const clearBtn = document.getElementById('clearBtn');
 const roomsContainer = document.getElementById('roomsContainer');
 const downloadBtn = document.getElementById('downloadBtn');
-const downloadListBtn = document.getElementById('downloadListBtn');
+const copyListBtn = document.getElementById('copyListBtn');
 
 // Load initial state
 function init() {
@@ -40,8 +40,8 @@ function init() {
   // Download button click
   downloadBtn.addEventListener('click', downloadExcel);
   
-  // Download register numbers button click
-  downloadListBtn.addEventListener('click', downloadRegisterNumbersExcel);
+  // Copy register numbers button click
+  copyListBtn.addEventListener('click', copyRegisterNumbersList);
   
   // Initial render
   render();
@@ -634,73 +634,42 @@ async function downloadExcel() {
   }
 }
 
-// Download register numbers only in a single column
-async function downloadRegisterNumbersExcel() {
+// Copy register numbers only to clipboard (one per line, in order)
+function copyRegisterNumbersList() {
   if (entries.length === 0) {
-    alert("No entries to download.");
+    alert("No entries to copy.");
     return;
   }
   
-  try {
-    // Collect all non-empty register numbers
-    const studentIds = entries
-      .map(e => e.studentId.trim())
-      .filter(id => id !== "");
-      
-    if (studentIds.length === 0) {
-      alert("No valid student IDs found.");
-      return;
-    }
+  // Collect all non-empty register numbers in their added order
+  const studentIds = entries
+    .map(e => e.studentId.trim())
+    .filter(id => id !== "");
     
-    const workbook = new ExcelJS.Workbook();
-    const sheet = workbook.addWorksheet("Register Numbers");
-    
-    // Setup column header
-    sheet.columns = [
-      { header: "REGISTER NUMBER", key: "id", width: 30 }
-    ];
-    
-    // Fill values
-    studentIds.forEach(id => {
-      sheet.addRow({ id });
-    });
-    
-    // Format header row
-    const headerRow = sheet.getRow(1);
-    headerRow.height = 25;
-    const headerCell = headerRow.getCell(1);
-    headerCell.font = { name: "Arial", size: 14, bold: true };
-    headerCell.alignment = { vertical: "middle", horizontal: "center" };
-    headerCell.border = {
-      top: { style: "thin" },
-      bottom: { style: "medium" },
-      left: { style: "thin" },
-      right: { style: "thin" }
-    };
-    
-    // Format student data rows
-    sheet.eachRow((row, rowNumber) => {
-      if (rowNumber > 1) {
-        const cell = row.getCell(1);
-        cell.font = { name: "Arial", size: 12 };
-        cell.alignment = { vertical: "middle", horizontal: "center" };
-        cell.border = {
-          top: { style: "thin" },
-          bottom: { style: "thin" },
-          left: { style: "thin" },
-          right: { style: "thin" }
-        };
-      }
-    });
-    
-    const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-    saveAs(blob, "register_numbers.xlsx");
-    
-  } catch (err) {
-    console.error("Error generating Register Numbers Excel", err);
-    alert("An error occurred during Excel export: " + err.message);
+  if (studentIds.length === 0) {
+    alert("No valid student IDs found.");
+    return;
   }
+  
+  const textToCopy = studentIds.join('\n');
+  
+  navigator.clipboard.writeText(textToCopy).then(() => {
+    // Visual success state on the button
+    const originalHTML = copyListBtn.innerHTML;
+    copyListBtn.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      <span>Copied List!</span>
+    `;
+    copyListBtn.style.backgroundColor = 'var(--accent-save)';
+    
+    setTimeout(() => {
+      copyListBtn.innerHTML = originalHTML;
+      copyListBtn.style.backgroundColor = '';
+    }, 2000);
+  }).catch(err => {
+    console.error("Could not copy register list to clipboard", err);
+    alert("Failed to copy list: " + err.message);
+  });
 }
 
 // Boot application

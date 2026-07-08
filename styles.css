@@ -539,13 +539,14 @@ body {
   box-shadow: 0 6px 16px rgba(30, 203, 225, 0.35);
 }
 
-.download-list-btn {
+.copy-list-btn {
   background-color: var(--accent-list);
   color: hsl(222, 30%, 5%);
   box-shadow: 0 4px 12px rgba(194, 153, 255, 0.2);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.1s ease;
 }
 
-.download-list-btn:hover {
+.copy-list-btn:hover {
   background-color: var(--accent-list-hover);
   box-shadow: 0 6px 16px rgba(194, 153, 255, 0.35);
 }
