@@ -1,0 +1,608 @@
+/* Room Allotment System - Professional Corporate Dashboard Style */
+
+:root {
+  /* Colors - Modern Deep HSL Palette */
+  --bg-body: hsl(222, 30%, 8%);
+  --bg-panel: rgba(17, 24, 39, 0.75);
+  --bg-card: hsl(222, 22%, 13%);
+  --bg-input: hsl(222, 20%, 10%);
+  --bg-excel: hsl(222, 25%, 9%);
+  --bg-student-col: hsl(222, 25%, 11%);
+  
+  --text-main: hsl(210, 100%, 96%);
+  --text-muted: hsl(215, 30%, 75%);
+  --text-dim: hsl(215, 20%, 55%);
+  
+  --border-light: rgba(255, 255, 255, 0.08);
+  --border-medium: hsl(217, 20%, 22%);
+  --border-dark: hsl(217, 25%, 17%);
+  
+  /* Brand Accent Colors */
+  --accent-primary: hsl(210, 100%, 66%);
+  --accent-primary-hover: hsl(210, 100%, 58%);
+  
+  --accent-clear: hsl(35, 100%, 70%);
+  --accent-clear-hover: hsl(345, 80%, 55%);
+  
+  --accent-download: hsl(185, 85%, 50%);
+  --accent-download-hover: hsl(185, 90%, 42%);
+  
+  --accent-list: hsl(264, 100%, 80%);
+  --accent-list-hover: hsl(264, 100%, 73%);
+  
+  --accent-save: hsl(142, 70%, 45%);
+  --accent-edit-hover: hsl(220, 60%, 55%);
+  --accent-delete-hover: hsl(350, 75%, 50%);
+  --accent-add-hover: hsl(150, 60%, 45%);
+  
+  /* Typography & Effects */
+  --font-sans: 'Outfit', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --shadow-lg: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --radius-lg: 16px;
+  --radius-md: 10px;
+  --radius-sm: 6px;
+  
+  /* Room Color Indicators */
+  --color-pink: #ff80ab;
+  --color-blue: #3ea6ff;
+  --color-green: #00c896;
+  --color-orange: #ffae42;
+  --color-purple: #c299ff;
+}
+
+/* Base resets */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-body);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+}
+
+.container {
+  margin: 0 auto;
+  max-width: 1280px;
+  padding: 0 24px;
+}
+
+/* Header bar styling */
+.form-container {
+  background-color: var(--bg-panel);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border-light);
+  box-shadow: var(--shadow-lg);
+  left: 0;
+  position: fixed;
+  right: 0;
+  top: 0;
+  z-index: 1000;
+  padding: 16px 0;
+}
+
+.header-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* Header title and top actions alignment */
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.header-top h1 {
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+  background: linear-gradient(135deg, #ffffff 30%, var(--accent-primary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 2px 10px rgba(62, 166, 255, 0.15);
+}
+
+.header-placeholder {
+  width: 130px; /* balances out the clear button width for symmetry */
+}
+
+/* Clear Entries Button */
+.clear-btn {
+  background-color: transparent;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 130px;
+  justify-content: center;
+}
+
+.clear-btn svg {
+  transition: transform 0.2s ease;
+}
+
+.clear-btn:hover {
+  background-color: rgba(220, 53, 69, 0.15);
+  border-color: var(--accent-delete-hover);
+  color: #ff6b7e;
+}
+
+.clear-btn:hover svg {
+  transform: rotate(5deg) scale(1.05);
+}
+
+/* Form structure */
+.form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+}
+
+/* Group wrapper for inputs with icons */
+.input-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-group .input-icon {
+  position: absolute;
+  left: 12px;
+  color: var(--text-dim);
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+  transition: color 0.2s ease;
+}
+
+.form input {
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 10px 12px 10px 38px;
+  width: 175px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.form input::placeholder {
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.form input:focus {
+  background-color: hsl(222, 20%, 14%);
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(62, 166, 255, 0.15);
+  outline: none;
+}
+
+.form input:focus + .input-icon {
+  color: var(--accent-primary);
+}
+
+.form button {
+  background-color: var(--accent-primary);
+  color: hsl(222, 30%, 5%);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 700;
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 10px rgba(62, 166, 255, 0.2);
+}
+
+.form button:hover {
+  background-color: var(--accent-primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(62, 166, 255, 0.3);
+}
+
+/* Tip banner for keyboard workflow */
+.shortcut-tip {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.shortcut-tip svg {
+  color: var(--accent-primary);
+}
+
+.shortcut-tip code {
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-medium);
+  border-radius: 3px;
+  padding: 1px 4px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+/* Rooms dynamic list grid layout */
+.rooms-container {
+  margin-top: 250px;
+  padding-bottom: 120px;
+}
+
+/* Room Card styles */
+.room {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-dark);
+  border-radius: var(--radius-lg);
+  margin-bottom: 30px;
+  padding: 24px;
+  box-shadow: var(--shadow-lg);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow: hidden;
+}
+
+.room:hover {
+  transform: translateY(-3px);
+}
+
+.room-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--border-medium);
+  padding-bottom: 12px;
+}
+
+.room-header h3 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-main);
+  letter-spacing: 0.5px;
+}
+
+.room-header p {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-primary);
+  background-color: rgba(62, 166, 255, 0.1);
+  padding: 4px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(62, 166, 255, 0.15);
+}
+
+/* Color indicator bars */
+.room.pink { border-top: 4px solid var(--color-pink); }
+.room.blue { border-top: 4px solid var(--color-blue); }
+.room.green { border-top: 4px solid var(--color-green); }
+.room.orange { border-top: 4px solid var(--color-orange); }
+.room.purple { border-top: 4px solid var(--color-purple); }
+
+/* Course structural display */
+.course-block {
+  margin-top: 24px;
+}
+
+.course-block:first-of-type {
+  margin-top: 10px;
+}
+
+.course-block h4 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.course-block h4::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--accent-primary);
+}
+
+/* Excel container scroll area */
+.table-excel {
+  background-color: var(--bg-excel);
+  border: 1px solid var(--border-dark);
+  border-radius: var(--radius-md);
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding: 16px;
+}
+
+.table-excel::-webkit-scrollbar {
+  height: 6px;
+}
+.table-excel::-webkit-scrollbar-track {
+  background: var(--bg-excel);
+}
+.table-excel::-webkit-scrollbar-thumb {
+  background: var(--border-medium);
+  border-radius: var(--radius-sm);
+}
+
+/* Student column */
+.student-column {
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  min-width: 410px;
+  overflow: hidden;
+  background-color: var(--bg-student-col);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Row display */
+.table-row {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--border-dark);
+  gap: 8px;
+  height: 38px;
+  transition: background-color 0.15s ease;
+}
+
+.table-row:hover:not(.table-header) {
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+.table-row:last-child {
+  border-bottom: none;
+}
+
+.table-header {
+  background-color: var(--bg-input);
+  font-weight: 700;
+  color: var(--text-muted);
+  height: 34px;
+  border-bottom: 1px solid var(--border-medium);
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+}
+
+.table-cell {
+  display: flex;
+  align-items: center;
+  border-right: 1px solid var(--border-dark);
+  padding: 6px 12px;
+  white-space: nowrap;
+  height: 100%;
+  font-size: 12px;
+}
+
+.table-cell:last-child {
+  border-right: none;
+}
+
+/* Sizing columns */
+.slno-cell, .slno-header {
+  width: 55px;
+  justify-content: center;
+  font-family: var(--font-mono);
+  color: var(--text-dim);
+}
+
+.id-cell, .id-header {
+  width: 175px;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-weight: 500;
+}
+
+.action-cell, .action-header {
+  width: 165px;
+  justify-content: center;
+}
+
+/* Inline Edit input fields */
+.table-row input {
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  box-sizing: border-box;
+  color: var(--text-main);
+  font-size: 12px;
+  max-width: 155px;
+  padding: 4px 8px;
+  transition: all 0.2s ease;
+  width: 100%;
+  font-family: var(--font-mono);
+}
+
+.table-row input:focus {
+  background-color: hsl(222, 20%, 14%);
+  border-color: var(--accent-primary);
+  outline: none;
+}
+
+/* Action button items */
+.add-btn, .delete-btn, .edit-btn, .save-btn {
+  background-color: transparent;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  margin-left: 4px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.edit-btn:hover {
+  background-color: rgba(62, 166, 255, 0.12);
+  color: var(--accent-primary);
+  border-color: var(--accent-primary);
+}
+
+.save-btn {
+  background-color: rgba(40, 167, 69, 0.15);
+  border-color: var(--accent-save);
+  color: var(--accent-save);
+}
+.save-btn:hover {
+  background-color: var(--accent-save);
+  color: #000;
+}
+
+.delete-btn:hover {
+  background-color: rgba(220, 53, 69, 0.15);
+  color: #ff6b7e;
+  border-color: var(--accent-delete-hover);
+}
+
+.add-btn:hover {
+  background-color: rgba(40, 186, 123, 0.12);
+  color: var(--accent-add-hover);
+  border-color: var(--accent-add-hover);
+}
+
+/* Footer panel download buttons */
+.footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: var(--bg-panel);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  padding: 16px 0;
+  z-index: 1000;
+  border-top: 1px solid var(--border-light);
+  box-shadow: 0 -10px 30px rgba(0,0,0,0.5);
+}
+
+.footer-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+}
+
+.download-btn {
+  background-color: var(--accent-download);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: hsl(222, 30%, 5%);
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(30, 203, 225, 0.2);
+}
+
+.download-btn:hover {
+  background-color: var(--accent-download-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(30, 203, 225, 0.35);
+}
+
+.download-list-btn {
+  background-color: var(--accent-list);
+  color: hsl(222, 30%, 5%);
+  box-shadow: 0 4px 12px rgba(194, 153, 255, 0.2);
+}
+
+.download-list-btn:hover {
+  background-color: var(--accent-list-hover);
+  box-shadow: 0 6px 16px rgba(194, 153, 255, 0.35);
+}
+
+/* Empty State Illustration spacing */
+.empty-state {
+  max-width: 480px;
+  margin: 100px auto;
+  border: 1px dashed var(--border-medium);
+  border-radius: var(--radius-lg);
+  background-color: var(--bg-card);
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Responsive configurations */
+@media (max-width: 992px) {
+  .form input {
+    width: 140px;
+  }
+}
+
+@media (max-width: 768px) {
+  .header-top {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .clear-btn {
+    order: 2;
+  }
+  .header-placeholder {
+    display: none;
+  }
+  .rooms-container {
+    margin-top: 310px;
+  }
+}
+
+@media (max-width: 480px) {
+  .rooms-container {
+    margin-top: 480px;
+  }
+  .form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .input-group {
+    width: 100%;
+  }
+  .form input {
+    width: 100%;
+  }
+  .footer-inner {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0 20px;
+  }
+}

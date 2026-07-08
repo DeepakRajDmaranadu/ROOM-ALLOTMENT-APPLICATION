@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ROOM ALLOTMENT</title>
+  
+  <!-- Modern Premium Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header Controls Form Bar -->
+    <header class="form-container">
+      <div class="header-inner">
+        <!-- Brand Title and Clear Controls -->
+        <div class="header-top">
+          <button id="clearBtn" class="clear-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            <span>Clear Entries</span>
+          </button>
+          <h1>ROOM ALLOTMENT</h1>
+          <div class="header-placeholder"></div>
+        </div>
+        
+        <!-- Interactive Inputs Form -->
+        <form id="allotmentForm" class="form" onsubmit="return false;">
+          <!-- Room Input Group -->
+          <div class="input-group">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="input-icon"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            <input type="text" id="roomInput" placeholder="ROOM NUMBER" autocomplete="off" required>
+          </div>
+          
+          <!-- Time Input Group -->
+          <div class="input-group">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="input-icon"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <input type="text" id="timeInput" placeholder="TIME" autocomplete="off" required>
+          </div>
+          
+          <!-- Course Input Group -->
+          <div class="input-group">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="input-icon"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2.5 3 6 3s6-1 6-3v-5"/></svg>
+            <input type="text" id="courseInput" placeholder="COURSE" autocomplete="off" required>
+          </div>
+          
+          <!-- Subject Input Group -->
+          <div class="input-group">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="input-icon"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+            <input type="text" id="subjectInput" placeholder="SUBJECT" autocomplete="off" required>
+          </div>
+          
+          <!-- Student ID Input Group -->
+          <div class="input-group">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="input-icon"><rect x="3" y="4" width="18" height="16" rx="2" fill="none"/><circle cx="9" cy="12" r="2.5"/><path d="M14 11h4M14 13h4M14 15h2"/></svg>
+            <input type="text" id="studentIdInput" placeholder="STUDENT ID" autocomplete="off" required>
+          </div>
+          
+          <button type="submit" id="addBtn">Add Entry</button>
+        </form>
+        
+        <!-- Workflow Tips Banner -->
+        <div class="shortcut-tip">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          <span><strong>Workflow Tip:</strong> Press <code>Enter</code> to quickly add a student. Use <code>Arrow Up/Down</code> on Student ID to increment/decrement numbers.</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main dynamic room list container -->
+    <main id="roomsContainer" class="rooms-container">
+      <!-- Generated dynamically in app.js -->
+    </main>
+
+    <!-- Footer Excel Download bar -->
+    <footer class="footer">
+      <div class="footer-inner">
+        <button id="downloadBtn" class="download-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>Download Excel Plan</span>
+        </button>
+        <button id="downloadListBtn" class="download-btn download-list-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          <span>Download Register List</span>
+        </button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- CDN Dependencies -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  <!-- App logic -->
+  <script src="app.js"></script>
+</body>
+</html>
