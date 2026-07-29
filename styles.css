@@ -683,7 +683,7 @@ body {
 }
 
 .settings-panel.expanded {
-  max-height: 350px;
+  max-height: 480px;
   padding: 16px 20px;
   opacity: 1;
 }

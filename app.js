@@ -33,6 +33,7 @@ let examName = "EXAMINATION NAME";
 let examDate = "";
 let examSession = "";
 let logoBase64 = "";
+let uniformPdfColumns = false;
 
 // DOM Elements
 const roomInput = document.getElementById('roomInput');
@@ -68,6 +69,7 @@ const examSessionInput = document.getElementById('examSessionInput');
 const logoFileInput = document.getElementById('logoFileInput');
 const removeLogoBtn = document.getElementById('removeLogoBtn');
 const fileNameLabel = document.getElementById('fileNameLabel');
+const uniformColumnsInput = document.getElementById('uniformColumnsInput');
 
 // Load initial state
 function init() {
@@ -104,11 +106,13 @@ function init() {
   examDate = localStorage.getItem('examDate') || "";
   examSession = localStorage.getItem('examSession') || "";
   logoBase64 = localStorage.getItem('logoBase64') || "";
+  uniformPdfColumns = localStorage.getItem('uniformPdfColumns') === 'true';
   
   univNameInput.value = univName;
   examNameInput.value = examName;
   examDateInput.value = examDate;
   examSessionInput.value = examSession;
+  uniformColumnsInput.checked = uniformPdfColumns;
   if (logoBase64) {
     fileNameLabel.textContent = "Logo image loaded";
   }
@@ -177,6 +181,15 @@ function init() {
     logoFileInput.value = "";
     fileNameLabel.textContent = "No logo selected";
     render();
+  });
+  
+  // Uniform PDF columns checkbox toggle listener
+  uniformColumnsInput.addEventListener('change', (e) => {
+    uniformPdfColumns = e.target.checked;
+    localStorage.setItem('uniformPdfColumns', uniformPdfColumns ? 'true' : 'false');
+    if (previewModal.classList.contains('active')) {
+      showPDFPreview();
+    }
   });
   
   // Set up listeners for form filters
@@ -1241,7 +1254,11 @@ function buildPDFMarkup() {
       
       // 2. Room Seating Table (matches Excel Grid structure)
       const table = document.createElement('table');
-      table.style.width = '100%';
+      if (uniformPdfColumns) {
+        table.style.width = `${(pageChunk.length / 7) * 100}%`;
+      } else {
+        table.style.width = '100%';
+      }
       table.style.borderCollapse = 'collapse';
       table.style.fontFamily = '"Times New Roman", Times, serif';
       table.style.fontSize = '12px';
