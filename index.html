@@ -26,7 +26,54 @@
             <span>Clear Entries</span>
           </button>
           <h1>ROOM ALLOTMENT</h1>
-          <div class="header-placeholder"></div>
+          <div class="header-actions-group">
+            <button id="themeToggleBtn" class="clear-btn theme-toggle-btn" title="Toggle Theme" style="width: 40px; padding: 8px; justify-content: center;">
+              <svg id="themeIcon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+              </svg>
+            </button>
+            <button id="settingsToggleBtn" class="clear-btn settings-toggle-btn" style="width: auto; flex-grow: 1;">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              <span>Settings</span>
+            </button>
+          </div>
+        </div>
+        
+        <!-- Collapsible Settings Panel -->
+        <div id="settingsPanel" class="settings-panel collapsed">
+          <div class="settings-grid">
+            <div class="settings-field">
+              <label for="univNameInput">University Name</label>
+              <input type="text" id="univNameInput" placeholder="e.g., NATIONAL UNIVERSITY OF TECHNOLOGY">
+            </div>
+            <div class="settings-field">
+              <label for="examNameInput">Examination Name</label>
+              <input type="text" id="examNameInput" placeholder="e.g., SEMESTER EXAMINATIONS - AUGUST 2026">
+            </div>
+            <div class="settings-field">
+              <label for="examDateInput">Exam Date</label>
+              <input type="date" id="examDateInput">
+            </div>
+            <div class="settings-field">
+              <label for="examSessionInput">Session</label>
+              <select id="examSessionInput">
+                <option value="">Select Session</option>
+                <option value="Morning">Morning</option>
+                <option value="Afternoon">Afternoon</option>
+              </select>
+            </div>
+            <div class="settings-field">
+              <label>University Logo</label>
+              <div class="file-upload-row">
+                <div class="file-upload-wrapper">
+                  <input type="file" id="logoFileInput" accept="image/*">
+                  <button type="button" class="upload-btn-styled">Upload Logo</button>
+                </div>
+                <button type="button" id="removeLogoBtn" class="remove-logo-btn" title="Remove Logo">Remove</button>
+              </div>
+              <span id="fileNameLabel" class="file-name-label">No logo selected</span>
+            </div>
+          </div>
         </div>
         
         <!-- Interactive Inputs Form -->
@@ -88,13 +135,43 @@
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
           <span>Copy Register List</span>
         </button>
+        <button id="downloadPdfBtn" class="download-btn pdf-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+          <span>Download PDF Plan</span>
+        </button>
+        <button id="previewPdfBtn" class="download-btn preview-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          <span>Preview PDF</span>
+        </button>
       </div>
     </footer>
+  </div>
+
+  <!-- PDF Preview Modal -->
+  <div id="previewModal" class="modal-overlay">
+    <div class="modal-content pdf-preview-content">
+      <div class="modal-header">
+        <h2>PDF Print Preview</h2>
+        <div class="modal-header-actions">
+          <button id="modalDownloadBtn" class="download-btn pdf-btn small-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span>Download PDF</span>
+          </button>
+          <button id="closePreviewBtn" class="close-modal-btn">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      </div>
+      <div id="previewBody" class="modal-body pdf-preview-body">
+        <!-- Rendered PDF pages will go here -->
+      </div>
+    </div>
   </div>
 
   <!-- CDN Dependencies -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <!-- App logic -->
   <script src="app.js"></script>
 </body>

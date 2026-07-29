@@ -3,6 +3,36 @@
 // State
 let entries = [];
 let editingIndex = null;
+let roomRowCounts = {};
+
+// Helper functions for room-specific row counts
+function loadRoomRowCounts() {
+  const stored = localStorage.getItem('roomRowCounts');
+  if (stored) {
+    try {
+      roomRowCounts = JSON.parse(stored);
+    } catch (e) {
+      console.error("Error parsing roomRowCounts", e);
+      roomRowCounts = {};
+    }
+  }
+}
+
+function getRoomRowCount(roomName) {
+  return roomRowCounts[roomName] || 10;
+}
+
+function setRoomRowCount(roomName, count) {
+  roomRowCounts[roomName] = count;
+  localStorage.setItem('roomRowCounts', JSON.stringify(roomRowCounts));
+}
+
+// Header Settings State
+let univName = "UNIVERSITY NAME";
+let examName = "EXAMINATION NAME";
+let examDate = "";
+let examSession = "";
+let logoBase64 = "";
 
 // DOM Elements
 const roomInput = document.getElementById('roomInput');
@@ -14,10 +44,50 @@ const addBtn = document.getElementById('addBtn');
 const clearBtn = document.getElementById('clearBtn');
 const roomsContainer = document.getElementById('roomsContainer');
 const downloadBtn = document.getElementById('downloadBtn');
+const downloadPdfBtn = document.getElementById('downloadPdfBtn');
+const previewPdfBtn = document.getElementById('previewPdfBtn');
 const copyListBtn = document.getElementById('copyListBtn');
+
+// DOM Theme Toggle Elements
+const themeToggleBtn = document.getElementById('themeToggleBtn');
+const themeIcon = document.getElementById('themeIcon');
+
+// DOM Preview Modal Elements
+const previewModal = document.getElementById('previewModal');
+const closePreviewBtn = document.getElementById('closePreviewBtn');
+const modalDownloadBtn = document.getElementById('modalDownloadBtn');
+const previewBody = document.getElementById('previewBody');
+
+// DOM Settings Elements
+const settingsToggleBtn = document.getElementById('settingsToggleBtn');
+const settingsPanel = document.getElementById('settingsPanel');
+const univNameInput = document.getElementById('univNameInput');
+const examNameInput = document.getElementById('examNameInput');
+const examDateInput = document.getElementById('examDateInput');
+const examSessionInput = document.getElementById('examSessionInput');
+const logoFileInput = document.getElementById('logoFileInput');
+const removeLogoBtn = document.getElementById('removeLogoBtn');
+const fileNameLabel = document.getElementById('fileNameLabel');
 
 // Load initial state
 function init() {
+  // Initialize Theme (Default to Light Mode, check storage for user override)
+  const theme = localStorage.getItem('themePreference') || 'light';
+  if (theme === 'dark') {
+    document.body.classList.add('dark-theme');
+    updateThemeToggleIcon(true);
+  } else {
+    document.body.classList.remove('dark-theme');
+    updateThemeToggleIcon(false);
+  }
+  
+  // Theme Toggle Button Click
+  themeToggleBtn.addEventListener('click', toggleTheme);
+
+  // Load room row counts
+  loadRoomRowCounts();
+  
+  // Load entries
   const stored = localStorage.getItem('roomEntries');
   if (stored) {
     try {
@@ -27,6 +97,76 @@ function init() {
       entries = [];
     }
   }
+  
+  // Load settings
+  univName = localStorage.getItem('univName') || "UNIVERSITY NAME";
+  examName = localStorage.getItem('examName') || "EXAMINATION NAME";
+  examDate = localStorage.getItem('examDate') || "";
+  examSession = localStorage.getItem('examSession') || "";
+  logoBase64 = localStorage.getItem('logoBase64') || "";
+  
+  univNameInput.value = univName;
+  examNameInput.value = examName;
+  examDateInput.value = examDate;
+  examSessionInput.value = examSession;
+  if (logoBase64) {
+    fileNameLabel.textContent = "Logo image loaded";
+  }
+  
+  // Settings panel toggle
+  settingsToggleBtn.addEventListener('click', () => {
+    settingsPanel.classList.toggle('expanded');
+    settingsPanel.classList.toggle('collapsed');
+  });
+  
+  // Settings inputs listeners
+  univNameInput.addEventListener('input', (e) => {
+    univName = e.target.value;
+    localStorage.setItem('univName', univName);
+    render();
+  });
+  
+  examNameInput.addEventListener('input', (e) => {
+    examName = e.target.value;
+    localStorage.setItem('examName', examName);
+    render();
+  });
+  
+  examDateInput.addEventListener('change', (e) => {
+    examDate = e.target.value;
+    localStorage.setItem('examDate', examDate);
+    render();
+  });
+  
+  examSessionInput.addEventListener('change', (e) => {
+    examSession = e.target.value;
+    localStorage.setItem('examSession', examSession);
+    render();
+  });
+  
+  // Logo file upload listener
+  logoFileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        logoBase64 = evt.target.result;
+        localStorage.setItem('logoBase64', logoBase64);
+        fileNameLabel.textContent = file.name;
+        render();
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+  
+  // Remove logo listener
+  removeLogoBtn.addEventListener('click', () => {
+    logoBase64 = "";
+    localStorage.removeItem('logoBase64');
+    logoFileInput.value = "";
+    fileNameLabel.textContent = "No logo selected";
+    render();
+  });
   
   // Set up listeners for form filters
   setupFilters();
@@ -39,6 +179,28 @@ function init() {
   
   // Download button click
   downloadBtn.addEventListener('click', downloadExcel);
+  
+  // Download PDF button click
+  downloadPdfBtn.addEventListener('click', downloadPDF);
+  
+  // Preview PDF button click
+  previewPdfBtn.addEventListener('click', showPDFPreview);
+  
+  // Close Modal Preview button click
+  closePreviewBtn.addEventListener('click', closePDFPreview);
+  
+  // Modal Download PDF button click
+  modalDownloadBtn.addEventListener('click', () => {
+    closePDFPreview();
+    downloadPDF();
+  });
+  
+  // Close preview modal on backdrop click
+  previewModal.addEventListener('click', (e) => {
+    if (e.target === previewModal) {
+      closePDFPreview();
+    }
+  });
   
   // Copy register numbers button click
   copyListBtn.addEventListener('click', copyRegisterNumbersList);
@@ -215,16 +377,16 @@ function insertEntryAfter(index) {
   editEntry(index + 1);
 }
 
-// Group entries helper
+// Group entries helper (groups by Room, then by Course and Subject combination)
 function groupEntries() {
   return entries.reduce((acc, entry, originalIndex) => {
     const r = entry.room;
-    const c = entry.course;
+    const key = `${entry.course}::${entry.subject}`;
     
     if (!acc[r]) acc[r] = {};
-    if (!acc[r][c]) acc[r][c] = [];
+    if (!acc[r][key]) acc[r][key] = [];
     
-    acc[r][c].push({ ...entry, index: originalIndex });
+    acc[r][key].push({ ...entry, index: originalIndex });
     return acc;
   }, {});
 }
@@ -237,15 +399,26 @@ function getRoomColorClass(grouped, roomName) {
   return colors[index % colors.length];
 }
 
+// Format date helper (converts YYYY-MM-DD to DD-MM-YYYY)
+function formatDate(dateStr) {
+  if (!dateStr) return "";
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}-${parts[1]}-${parts[0]}`;
+  }
+  return dateStr;
+}
+
 // Render dynamic UI
 function render() {
-  // Capture current scroll states before wiping elements
+  // Capture current scroll states before wiping elements (by room, course, and subject)
   const scrollMap = {};
   document.querySelectorAll('.table-excel').forEach(el => {
     const room = el.getAttribute('data-room');
     const course = el.getAttribute('data-course');
-    if (room && course) {
-      scrollMap[`${room}_${course}`] = el.scrollLeft;
+    const subject = el.getAttribute('data-subject');
+    if (room && course && subject) {
+      scrollMap[`${room}_${course}_${subject}`] = el.scrollLeft;
     }
   });
   const scrollY = window.scrollY;
@@ -265,6 +438,31 @@ function render() {
     `;
     return;
   }
+
+  // Render University/Exam Seating Arrangement Header Banner Card
+  const bannerCard = document.createElement('div');
+  bannerCard.className = 'university-banner-card';
+  
+  const logoBox = document.createElement('div');
+  logoBox.className = 'univ-banner-logo';
+  if (logoBase64) {
+    logoBox.innerHTML = `<img src="${logoBase64}" alt="University Logo">`;
+  } else {
+    logoBox.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2.5 3 6 3s6-1 6-3v-5"/></svg>`;
+  }
+  bannerCard.appendChild(logoBox);
+  
+  const formattedDate = formatDate(examDate);
+  const dateDisplay = formattedDate ? ` | Date: ${formattedDate}${examSession ? ` (${examSession})` : ''}` : '';
+  const textBox = document.createElement('div');
+  textBox.className = 'univ-banner-text';
+  textBox.innerHTML = `
+    <h2>${univName}</h2>
+    <h3>${examName}</h3>
+    <p>Room-wise Seating Arrangement${dateDisplay}</p>
+  `;
+  bannerCard.appendChild(textBox);
+  roomsContainer.appendChild(bannerCard);
   
   roomEntriesList.forEach(([roomName, coursesMap]) => {
     const colorClass = getRoomColorClass(grouped, roomName);
@@ -276,22 +474,38 @@ function render() {
     const roomDiv = document.createElement('div');
     roomDiv.className = `room ${colorClass}`;
     
+    const rowCount = getRoomRowCount(roomName);
+    
     // Room Header
     const roomHeader = document.createElement('div');
     roomHeader.className = 'room-header';
-    roomHeader.innerHTML = `
-      <h3>Room No: ${roomName}</h3>
+    
+    const roomTitle = document.createElement('h3');
+    roomTitle.textContent = `Room No: ${roomName}`;
+    roomHeader.appendChild(roomTitle);
+    
+    // Controls for dynamic row count
+    const controlsDiv = document.createElement('div');
+    controlsDiv.className = 'room-header-controls';
+    controlsDiv.innerHTML = `
+      <div class="row-count-control">
+        <label>Rows:</label>
+        <input type="number" min="1" max="100" class="room-row-input" data-room="${roomName}" value="${rowCount}">
+      </div>
       <p>Total Students: ${totalStudents}</p>
     `;
+    roomHeader.appendChild(controlsDiv);
     roomDiv.appendChild(roomHeader);
     
-    // Course blocks
-    Object.entries(coursesMap).forEach(([courseName, studentList]) => {
+    // Course and Subject blocks
+    Object.entries(coursesMap).forEach(([courseSubjectKey, studentList]) => {
+      const [courseName, subjectName] = courseSubjectKey.split('::');
+      
       const courseBlock = document.createElement('div');
       courseBlock.className = 'course-block';
       
       const courseTitle = document.createElement('h4');
-      courseTitle.textContent = `Course: ${courseName}`;
+      courseTitle.textContent = `Course: ${courseName} | Subject: ${subjectName}`;
       courseBlock.appendChild(courseTitle);
       
       // Excel-like display grid wrapper
@@ -299,9 +513,10 @@ function render() {
       tableExcel.className = 'table-excel';
       tableExcel.setAttribute('data-room', roomName);
       tableExcel.setAttribute('data-course', courseName);
+      tableExcel.setAttribute('data-subject', subjectName);
       
-      // Chunk students into groups of 10
-      const chunkSize = 10;
+      // Chunk students into groups of chunkSize
+      const chunkSize = getRoomRowCount(roomName);
       const chunksCount = Math.ceil(studentList.length / chunkSize);
       
       for (let colIdx = 0; colIdx < chunksCount; colIdx++) {
@@ -318,8 +533,8 @@ function render() {
         `;
         studentColumn.appendChild(headerRow);
         
-        // 10 Rows per column
-        for (let rowIdx = 0; rowIdx < 10; rowIdx++) {
+        // Dynamic Rows per column
+        for (let rowIdx = 0; rowIdx < chunkSize; rowIdx++) {
           const studentIdx = colIdx * chunkSize + rowIdx;
           const student = studentList[studentIdx];
           
@@ -364,8 +579,11 @@ function render() {
               input.type = 'text';
               input.value = student.studentId;
               input.disabled = true;
-              input.style.background = '#253348';
+              input.style.background = 'transparent';
+              input.style.border = 'none';
+              input.style.color = 'var(--text-main)';
               input.style.fontSize = '15px';
+              input.style.textAlign = 'center';
               idCell.appendChild(input);
             }
             rowDiv.appendChild(idCell);
@@ -408,7 +626,7 @@ function render() {
             
             rowDiv.appendChild(actionCell);
           } else {
-            // Empty Row to fill grid to 10 rows
+            // Empty Row to fill grid to chunkSize rows
             rowDiv.innerHTML = `
               <div class="table-cell slno-cell"></div>
               <div class="table-cell id-cell"></div>
@@ -428,13 +646,31 @@ function render() {
     
     roomsContainer.appendChild(roomDiv);
   });
+  
+  // Set up listeners for room row inputs
+  document.querySelectorAll('.room-row-input').forEach(input => {
+    input.addEventListener('change', (e) => {
+      const room = e.target.getAttribute('data-room');
+      let val = parseInt(e.target.value, 10);
+      if (isNaN(val) || val < 1) val = 10;
+      setRoomRowCount(room, val);
+      render();
+    });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        e.target.blur();
+      }
+    });
+  });
 
   // Restore captured scroll states
   document.querySelectorAll('.table-excel').forEach(el => {
     const room = el.getAttribute('data-room');
     const course = el.getAttribute('data-course');
-    if (room && course) {
-      const key = `${room}_${course}`;
+    const subject = el.getAttribute('data-subject');
+    if (room && course && subject) {
+      const key = `${room}_${course}_${subject}`;
       if (scrollMap[key] !== undefined) {
         el.scrollLeft = scrollMap[key];
       }
@@ -451,42 +687,111 @@ async function downloadExcel() {
   }
   
   try {
-    // Structure data by Room, then by Course
+    // Structure data by Room, then by unique Course and Subject key
     const excelGroup = entries.reduce((acc, t) => {
       const r = t.room;
-      const c = t.course;
+      const key = `${t.course}::${t.subject}`;
       if (!acc[r]) acc[r] = {};
-      if (!acc[r][c]) {
-        acc[r][c] = {
+      if (!acc[r][key]) {
+        acc[r][key] = {
+          course: t.course,
           subject: t.subject,
           time: t.time,
           students: []
         };
       }
-      acc[r][c].students.push(t);
+      acc[r][key].students.push(t);
       return acc;
     }, {});
     
     const rows = [];
     const merges = [];
+    const studentRowIndices = new Set(); // Track actual student row indices for bold formatting
+    
+    // Calculate max columns across all room layouts to know how wide to merge the University Header
+    let maxColsInWorkbook = 0;
+    Object.entries(excelGroup).forEach(([roomName, coursesMap]) => {
+      let roomCols = 0;
+      const R = getRoomRowCount(roomName);
+      Object.values(coursesMap).forEach(courseData => {
+        const neededCols = Math.ceil(courseData.students.length / R);
+        roomCols += 2 * neededCols;
+      });
+      if (roomCols > maxColsInWorkbook) {
+        maxColsInWorkbook = roomCols;
+      }
+    });
+    
+    const formattedDate = formatDate(examDate);
+    const dateSessionText = formattedDate ? `DATE: ${formattedDate}${examSession ? ` (${examSession.toUpperCase()})` : ''}` : "";
+    
+    // Initialize first 3 rows for University Header details (logo placeholder columns left if logo exists)
+    const rightMergeCol = Math.max(2, maxColsInWorkbook - 1);
+    const startTextCol = logoBase64 ? 2 : 0;
+    const textColsCount = rightMergeCol - startTextCol + 1;
+    
+    if (logoBase64) {
+      rows.push(["", "", univName]);
+      rows.push(["", "", examName]);
+      
+      merges.push({ s: { r: 0, c: 2 }, e: { r: 0, c: rightMergeCol } });
+      merges.push({ s: { r: 1, c: 2 }, e: { r: 1, c: rightMergeCol } });
+      
+      if (textColsCount >= 3 && dateSessionText) {
+        const row3 = ["", ""];
+        row3[2] = "ROOM-WISE SEATING ARRANGEMENT";
+        row3[rightMergeCol - 1] = dateSessionText;
+        rows.push(row3);
+        
+        merges.push({ s: { r: 2, c: 2 }, e: { r: 2, c: rightMergeCol - 2 } });
+        merges.push({ s: { r: 2, c: rightMergeCol - 1 }, e: { r: 2, c: rightMergeCol } });
+      } else {
+        const subtitleText = dateSessionText ? `ROOM-WISE SEATING ARRANGEMENT - ${dateSessionText}` : "ROOM-WISE SEATING ARRANGEMENT";
+        rows.push(["", "", subtitleText]);
+        merges.push({ s: { r: 2, c: 2 }, e: { r: 2, c: rightMergeCol } });
+      }
+    } else {
+      rows.push([univName]);
+      rows.push([examName]);
+      
+      merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: rightMergeCol } });
+      merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: rightMergeCol } });
+      
+      if (textColsCount >= 3 && dateSessionText) {
+        const row3 = [];
+        row3[0] = "ROOM-WISE SEATING ARRANGEMENT";
+        row3[rightMergeCol - 1] = dateSessionText;
+        rows.push(row3);
+        
+        merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: rightMergeCol - 2 } });
+        merges.push({ s: { r: 2, c: rightMergeCol - 1 }, e: { r: 2, c: rightMergeCol } });
+      } else {
+        const subtitleText = dateSessionText ? `ROOM-WISE SEATING ARRANGEMENT - ${dateSessionText}` : "ROOM-WISE SEATING ARRANGEMENT";
+        rows.push([subtitleText]);
+        merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: rightMergeCol } });
+      }
+    }
     
     Object.entries(excelGroup).forEach(([roomName, coursesMap]) => {
       const coursesList = Object.entries(coursesMap);
       let totalCols = 0;
       
-      const coursesLayout = coursesList.map(([courseName, courseData]) => {
-        const neededCols = Math.ceil(courseData.students.length / 10);
+      const R = getRoomRowCount(roomName);
+      const coursesLayout = coursesList.map(([courseSubjectKey, courseData]) => {
+        const neededCols = Math.ceil(courseData.students.length / R);
         const colsCount = 2 * neededCols;
         totalCols += colsCount;
         return {
-          courseName,
+          courseSubjectKey,
+          courseName: courseData.course,
+          subjectName: courseData.subject,
           students: courseData.students,
           colsCount,
           neededCols
         };
       });
       
-      // 1. Room Header Row
+      // 1. Room Header Row (shifted down naturally by initial 3 rows)
       rows.push([`ROOM-${roomName}`]);
       const roomRowIdx = rows.length - 1;
       
@@ -499,7 +804,8 @@ async function downloadExcel() {
       let colOffset = 0;
       coursesLayout.forEach(layout => {
         const cName = layout.courseName;
-        const cData = coursesMap[cName];
+        const sName = layout.subjectName;
+        const cData = coursesMap[layout.courseSubjectKey];
         
         // Course header: CourseName (Time)
         rows[courseRowIdx][colOffset] = `${cName} (${cData.time})`;
@@ -509,7 +815,7 @@ async function downloadExcel() {
         });
         
         // Subject header
-        rows[subjectRowIdx][colOffset] = cData.subject || "";
+        rows[subjectRowIdx][colOffset] = sName || "";
         merges.push({
           s: { r: subjectRowIdx, c: colOffset },
           e: { r: subjectRowIdx, c: colOffset + layout.colsCount - 1 }
@@ -526,16 +832,17 @@ async function downloadExcel() {
         colOffset += layout.colsCount;
       });
       
-      // 2. Student Data Rows (10 rows)
-      for (let r = 0; r < 10; r++) {
+      // 2. Student Data Rows (R rows)
+      for (let r = 0; r < R; r++) {
         rows.push(Array(totalCols).fill(""));
+        studentRowIndices.add(rows.length - 1); // Track this row index as a student row
       }
       
       colOffset = 0;
       coursesLayout.forEach(layout => {
         for (let sub = 0; sub < layout.neededCols; sub++) {
-          for (let r = 0; r < 10; r++) {
-            const studentIdx = 10 * sub + r;
+          for (let r = 0; r < R; r++) {
+            const studentIdx = R * sub + r;
             const targetRowIdx = headerRowIdx + 1 + r;
             const slColIdx = colOffset + 2 * sub;
             const regColIdx = slColIdx + 1;
@@ -570,7 +877,8 @@ async function downloadExcel() {
         });
       }
       
-      // Push empty row for spacing
+      // Push 2 empty rows for spacing between rooms
+      rows.push([]);
       rows.push([]);
     });
     
@@ -578,25 +886,116 @@ async function downloadExcel() {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Room Allotments");
     
+    // Embed logo image at top left (covering cell range A1:B3) if it exists
+    if (logoBase64) {
+      try {
+        // Detect uploader file type or default to png
+        const format = logoBase64.includes("image/jpeg") || logoBase64.includes("image/jpg") ? "jpeg" : "png";
+        const imageId = workbook.addImage({
+          base64: logoBase64,
+          extension: format,
+        });
+        sheet.addImage(imageId, 'A1:B3');
+      } catch (e) {
+        console.error("Error embedding logo in Excel worksheet:", e);
+      }
+    }
+    
     rows.forEach((rowCells, rIdx) => {
       const row = sheet.getRow(rIdx + 1);
+      
+      // Set row heights
+      if (rIdx === 0) {
+        row.height = 35; // Univ Name row
+      } else if (rIdx === 1) {
+        row.height = 28; // Exam Name row
+      } else if (rIdx === 2) {
+        row.height = 24; // Subtitle row
+      } else if (studentRowIndices.has(rIdx)) {
+        row.height = 45; // Data rows height 45
+      } else {
+        // Set height 50 for rows containing subheaders (SL NO, REGISTER NUMBER) or COUNT
+        const hasSubHeader = rowCells.some(val => typeof val === 'string' && (val === "SL NO" || val === "REGISTER NUMBER"));
+        const hasCount = rowCells.some(val => typeof val === 'string' && val.startsWith("COUNT - "));
+        if (hasSubHeader || hasCount) {
+          row.height = 50;
+        } else {
+          // Check if this is a course header row and calculate wrapped height
+          let maxLinesInRow = 1;
+          let isCourseRow = false;
+          rowCells.forEach((cellVal, cIdx) => {
+            if (typeof cellVal === 'string' && cellVal.includes(" | ") && cellVal.includes("(") && cellVal.includes(")")) {
+              isCourseRow = true;
+              const merge = merges.find(m => m.s.r === rIdx && m.s.c === cIdx);
+              if (merge) {
+                const colsSpanned = merge.e.c - merge.s.c + 1;
+                // Times New Roman size 20 Bold characters are ~1.8x wider than default,
+                // so a standard column pair (width 34) holds roughly 15 characters of size 20 bold text.
+                const approxWidth = Math.max(14, (colsSpanned / 2) * 15);
+                const lines = Math.ceil(cellVal.length / approxWidth);
+                if (lines > maxLinesInRow) {
+                  maxLinesInRow = lines;
+                }
+              }
+            }
+          });
+          if (isCourseRow) {
+            row.height = Math.max(28, maxLinesInRow * 26); // 26pt per line ensures no cutting off
+          }
+        }
+      }
+      
       rowCells.forEach((cellVal, cIdx) => {
         const cell = row.getCell(cIdx + 1);
         cell.value = cellVal;
         
+        // Style University Header cells (no grid borders, align left if logo exists)
+        if (rIdx < 3) {
+          const startTextCol = logoBase64 ? 2 : 0;
+          const textColsCount = rightMergeCol - startTextCol + 1;
+          let horizontalAlign = "left";
+          if (logoBase64 && cIdx < 2) {
+            horizontalAlign = "center";
+          } else if (rIdx === 2 && dateSessionText && textColsCount >= 3 && cIdx >= rightMergeCol - 1) {
+            horizontalAlign = "right";
+          }
+          
+          cell.alignment = {
+            vertical: "middle",
+            horizontal: horizontalAlign
+          };
+          
+          cell.font = {
+            name: "Times New Roman",
+            size: rIdx === 0 ? 22 : rIdx === 1 ? 16 : 12,
+            bold: true,
+            italic: false,
+            color: { argb: "FF000000" }
+          };
+          
+          cell.border = {};
+          if (rIdx === 2) {
+            cell.border = {
+              bottom: { style: "medium", color: { argb: "FF000000" } }
+            };
+          }
+          return;
+        }
+        
         const isHeaderLabel = cellVal === "SL NO" || cellVal === "REGISTER NUMBER";
-        const isAlphanumericCode = typeof cellVal === "string" && /^[A-Z0-9]+$/.test(cellVal);
-        // Style condition for bold title headers (exclude data labels and student ids in grid)
-        const isBoldHeader = !isHeaderLabel && !(/^\d+$/.test(String(cellVal))) && !(isAlphanumericCode && rIdx >= 5);
+        
+        // Style all headers (room, course, time, subject, sl no, register number, count) as bold.
+        // Student data rows (identified dynamically by studentRowIndices) are NOT bold.
+        const isBoldHeader = !studentRowIndices.has(rIdx);
         
         cell.alignment = {
           vertical: "middle",
           horizontal: "center",
-          wrapText: isHeaderLabel
+          wrapText: true
         };
         
         cell.font = {
-          name: "Arial",
+          name: "Times New Roman",
           size: 20,
           bold: isBoldHeader
         };
@@ -627,12 +1026,19 @@ async function downloadExcel() {
     // Generate file buffer and trigger download
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-    saveAs(blob, "room_allotments.xlsx");
+    
+    // Download format: date-session-room allotment.xlsx
+    const sessionStr = examSession ? `${examSession}-` : '';
+    const dateStr = formattedDate ? `${formattedDate}-` : '';
+    const filename = `${dateStr}${sessionStr}room allotment.xlsx`;
+    saveAs(blob, filename);
   } catch (err) {
     console.error("Error generating Excel sheet", err);
     alert("An error occurred during Excel export: " + err.message);
   }
 }
+
+
 
 // Copy register numbers only to clipboard (one per line, in order)
 function copyRegisterNumbersList() {
@@ -661,15 +1067,404 @@ function copyRegisterNumbersList() {
       <span>Copied List!</span>
     `;
     copyListBtn.style.backgroundColor = 'var(--accent-save)';
+    copyListBtn.style.borderColor = 'var(--accent-save)';
+    copyListBtn.style.color = '#ffffff';
     
     setTimeout(() => {
       copyListBtn.innerHTML = originalHTML;
       copyListBtn.style.backgroundColor = '';
+      copyListBtn.style.borderColor = '';
+      copyListBtn.style.color = '';
     }, 2000);
   }).catch(err => {
     console.error("Could not copy register list to clipboard", err);
     alert("Failed to copy list: " + err.message);
   });
+}
+
+// Build seating plan page markup to share between Preview and Download
+function buildPDFMarkup() {
+  const excelGroup = entries.reduce((acc, t) => {
+    const r = t.room;
+    const key = `${t.course}::${t.subject}`;
+    if (!acc[r]) acc[r] = {};
+    if (!acc[r][key]) {
+      acc[r][key] = {
+        course: t.course,
+        subject: t.subject,
+        time: t.time,
+        students: []
+      };
+    }
+    acc[r][key].students.push(t);
+    return acc;
+  }, {});
+  
+  const printArea = document.createElement('div');
+  printArea.style.width = '297mm';
+  printArea.style.backgroundColor = '#ffffff';
+  printArea.style.color = '#000000';
+  printArea.style.position = 'relative';
+  
+  const formattedDate = formatDate(examDate);
+  const dateSessionText = formattedDate ? `DATE: ${formattedDate}${examSession ? ` (${examSession.toUpperCase()})` : ''}` : "";
+  
+  const roomEntries = Object.entries(excelGroup);
+  
+  roomEntries.forEach(([roomName, coursesMap], index) => {
+    const pageDiv = document.createElement('div');
+    pageDiv.className = 'pdf-page';
+    pageDiv.style.width = '297mm';
+    pageDiv.style.height = '200mm'; // Safe size slightly under A4 height to prevent sub-pixel overflow breaks
+    pageDiv.style.padding = '8mm 12mm'; // Tighter padding for 100% single page safety
+    pageDiv.style.boxSizing = 'border-box';
+    pageDiv.style.backgroundColor = '#ffffff';
+    pageDiv.style.color = '#000000';
+    pageDiv.style.fontFamily = '"Times New Roman", Times, serif';
+    pageDiv.style.position = 'relative';
+    pageDiv.style.overflow = 'hidden'; // Avoid any sub-pixel layout spills
+    
+    if (index > 0) {
+      pageDiv.style.pageBreakBefore = 'always';
+    }
+    
+    // 1. University Header Banner (matches Excel rows 1-3 format)
+    const headerDiv = document.createElement('div');
+    headerDiv.style.display = 'flex';
+    headerDiv.style.alignItems = 'center';
+    headerDiv.style.gap = '15px';
+    headerDiv.style.borderBottom = '2px solid #000000';
+    headerDiv.style.paddingBottom = '6px';
+    headerDiv.style.marginBottom = '10px';
+    
+    const logoBox = document.createElement('div');
+    logoBox.style.width = '72px';
+    logoBox.style.height = '72px';
+    logoBox.style.display = 'flex';
+    logoBox.style.alignItems = 'center';
+    logoBox.style.justifyContent = 'center';
+    logoBox.style.border = '1px solid #333333';
+    
+    if (logoBase64) {
+      logoBox.innerHTML = `<img src="${logoBase64}" style="width:100%; height:100%; object-fit:contain;">`;
+    } else {
+      logoBox.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="#333333" stroke-width="2" style="width:48px; height:48px;"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2.5 3 6 3s6-1 6-3v-5"/></svg>`;
+    }
+    headerDiv.appendChild(logoBox);
+    
+    const titleBox = document.createElement('div');
+    titleBox.style.flexGrow = '1';
+    titleBox.style.display = 'flex';
+    titleBox.style.flexDirection = 'column';
+    
+    const topRow = document.createElement('div');
+    topRow.style.fontSize = '26px';
+    topRow.style.fontWeight = 'bold';
+    topRow.style.textAlign = 'left';
+    topRow.textContent = univName;
+    titleBox.appendChild(topRow);
+    
+    const middleRow = document.createElement('div');
+    middleRow.style.fontSize = '18px';
+    middleRow.style.fontWeight = 'bold';
+    middleRow.style.textAlign = 'left';
+    middleRow.style.marginTop = '2px';
+    middleRow.textContent = examName;
+    titleBox.appendChild(middleRow);
+    
+    const subRow = document.createElement('div');
+    subRow.style.display = 'flex';
+    subRow.style.justifyContent = 'space-between';
+    subRow.style.fontSize = '18px';
+    subRow.style.fontWeight = 'bold';
+    subRow.style.marginTop = '2px';
+    subRow.innerHTML = `
+      <span>ROOM-WISE SEATING ARRANGEMENT</span>
+      <span>${dateSessionText}</span>
+    `;
+    titleBox.appendChild(subRow);
+    
+    headerDiv.appendChild(titleBox);
+    pageDiv.appendChild(headerDiv);
+    
+    // 2. Room Seating Table (matches Excel Grid structure)
+    const table = document.createElement('table');
+    table.style.width = '100%';
+    table.style.borderCollapse = 'collapse';
+    table.style.fontFamily = '"Times New Roman", Times, serif';
+    table.style.fontSize = '12px';
+    table.style.tableLayout = 'fixed';
+    
+    const coursesList = Object.entries(coursesMap);
+    const R = getRoomRowCount(roomName);
+    
+    let totalCols = 0;
+    const coursesLayout = coursesList.map(([courseSubjectKey, courseData]) => {
+      const neededCols = Math.ceil(courseData.students.length / R);
+      const colsCount = 2 * neededCols;
+      totalCols += colsCount;
+      return {
+        course: courseData.course,
+        subject: courseData.subject,
+        time: courseData.time,
+        students: courseData.students,
+        colsCount: colsCount
+      };
+    });
+    
+    const colgroup = document.createElement('colgroup');
+    const totalPairs = totalCols / 2;
+    coursesLayout.forEach(layout => {
+      for (let c = 0; c < layout.colsCount; c++) {
+        const col = document.createElement('col');
+        const pct = (c % 2 === 0) ? 0.25 : 0.75;
+        col.style.width = `${(100 / totalPairs) * pct}%`;
+        colgroup.appendChild(col);
+      }
+    });
+    table.appendChild(colgroup);
+    
+    // Room Name Row (height 42px, font size 20px, no background)
+    const roomRow = document.createElement('tr');
+    roomRow.style.height = '42px';
+    const roomCell = document.createElement('td');
+    roomCell.colSpan = totalCols;
+    roomCell.style.border = '1px solid #000000';
+    roomCell.style.textAlign = 'center';
+    roomCell.style.fontWeight = 'bold';
+    roomCell.style.fontSize = '20px';
+    roomCell.textContent = `ROOM NO: ${roomName}`;
+    roomRow.appendChild(roomCell);
+    table.appendChild(roomRow);
+    
+    // Course Headers Row (height 36px base, font size 18px)
+    const courseRow = document.createElement('tr');
+    let maxLines = 1;
+    coursesLayout.forEach(layout => {
+      const text = `${layout.course} | ${layout.subject} (${layout.time || ''})`;
+      const approxWidth = Math.max(14, (layout.colsCount / 2) * 15);
+      const lines = Math.ceil(text.length / approxWidth);
+      if (lines > maxLines) maxLines = lines;
+    });
+    courseRow.style.height = `${Math.max(36, maxLines * 26)}px`;
+    
+    coursesLayout.forEach(layout => {
+      const cCell = document.createElement('td');
+      cCell.colSpan = layout.colsCount;
+      cCell.style.border = '1px solid #000000';
+      cCell.style.textAlign = 'center';
+      cCell.style.fontWeight = 'bold';
+      cCell.style.fontSize = '18px';
+      cCell.style.padding = '4px';
+      cCell.style.wordWrap = 'break-word';
+      cCell.textContent = `${layout.course} | ${layout.subject} (${layout.time || ''})`;
+      courseRow.appendChild(cCell);
+    });
+    table.appendChild(courseRow);
+    
+    // Sub-Headers Row (SL NO, REGISTER NUMBER)
+    const subHeaderRow = document.createElement('tr');
+    subHeaderRow.style.height = '42px';
+    coursesLayout.forEach(layout => {
+      for (let c = 0; c < layout.colsCount; c++) {
+        const sCell = document.createElement('td');
+        sCell.style.border = '1px solid #000000';
+        sCell.style.textAlign = 'center';
+        sCell.style.fontWeight = 'bold';
+        sCell.style.fontSize = '15px';
+        sCell.style.padding = '4px 2px';
+        sCell.style.wordWrap = 'break-word';
+        sCell.style.whiteSpace = 'normal';
+        sCell.textContent = (c % 2 === 0) ? "SL NO" : "REGISTER NUMBER";
+        subHeaderRow.appendChild(sCell);
+      }
+    });
+    table.appendChild(subHeaderRow);
+    
+    // Student Data Rows
+    for (let r = 0; r < R; r++) {
+      const dataRow = document.createElement('tr');
+      dataRow.style.height = '28px';
+      
+      coursesLayout.forEach(layout => {
+        const neededCols = layout.colsCount / 2;
+        for (let col = 0; col < neededCols; col++) {
+          const studentIdx = col * R + r;
+          const student = layout.students[studentIdx];
+          
+          const slCell = document.createElement('td');
+          slCell.style.border = '1px solid #000000';
+          slCell.style.textAlign = 'center';
+          slCell.style.fontSize = '14px';
+          slCell.style.padding = '4px 2px';
+          slCell.style.wordWrap = 'break-word';
+          slCell.style.whiteSpace = 'normal';
+          
+          const regCell = document.createElement('td');
+          regCell.style.border = '1px solid #000000';
+          regCell.style.textAlign = 'center';
+          regCell.style.fontSize = '15px';
+          regCell.style.padding = '4px 2px';
+          regCell.style.wordWrap = 'break-word';
+          regCell.style.whiteSpace = 'normal';
+          
+          if (student) {
+            slCell.textContent = studentIdx + 1;
+            regCell.textContent = student.studentId;
+          } else {
+            slCell.innerHTML = '&nbsp;';
+            regCell.innerHTML = '&nbsp;';
+          }
+          
+          dataRow.appendChild(slCell);
+          dataRow.appendChild(regCell);
+        }
+      });
+      table.appendChild(dataRow);
+    }
+    
+    // Count Row
+    const countRow = document.createElement('tr');
+    countRow.style.height = '42px';
+    coursesLayout.forEach(layout => {
+      const coCell = document.createElement('td');
+      coCell.colSpan = layout.colsCount;
+      coCell.style.border = '1px solid #000000';
+      coCell.style.textAlign = 'center';
+      coCell.style.fontWeight = 'bold';
+      coCell.style.fontSize = '16px';
+      coCell.style.padding = '6px';
+      coCell.textContent = `COUNT - ${layout.students.length}`;
+      countRow.appendChild(coCell);
+    });
+    table.appendChild(countRow);
+    
+    pageDiv.appendChild(table);
+    printArea.appendChild(pageDiv);
+  });
+  
+  return printArea;
+}
+
+// Download Seating Plan as PDF in identical Excel layout format
+async function downloadPDF() {
+  if (entries.length === 0) {
+    alert("No entries to export.");
+    return;
+  }
+  
+  const originalText = downloadPdfBtn.innerHTML;
+  downloadPdfBtn.innerHTML = `
+    <svg class="animate-spin" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg>
+    <span>Generating PDF...</span>
+  `;
+  downloadPdfBtn.disabled = true;
+  
+  try {
+    // Create temporary print area wrapper (placed at 0,0 but zIndex -9999 behind the body background)
+    const printWrapper = document.createElement('div');
+    printWrapper.style.position = 'absolute';
+    printWrapper.style.left = '0';
+    printWrapper.style.top = '0';
+    printWrapper.style.width = '297mm';
+    printWrapper.style.zIndex = '-9999';
+    printWrapper.style.overflow = 'visible';
+    document.body.appendChild(printWrapper);
+    
+    const printArea = buildPDFMarkup();
+    printWrapper.appendChild(printArea);
+    
+    const formattedDate = formatDate(examDate);
+    const opt = {
+      margin:       0,
+      filename:     `${formattedDate ? `${formattedDate}-` : ''}${examSession ? `${examSession}-` : ''}room allotment.pdf`,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true, logging: false, scrollX: 0, scrollY: 0 },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' },
+      pagebreak:    { mode: 'css' }
+    };
+    
+    await html2pdf().from(printArea).set(opt).save();
+    
+    document.body.removeChild(printWrapper);
+  } catch (err) {
+    console.error("Error generating PDF document", err);
+    alert("An error occurred during PDF generation: " + err.message);
+  } finally {
+    downloadPdfBtn.innerHTML = originalText;
+    downloadPdfBtn.disabled = false;
+  }
+}
+
+// Show interactive PDF Preview inside UI modal overlay
+function showPDFPreview() {
+  if (entries.length === 0) {
+    alert("No entries to preview.");
+    return;
+  }
+  
+  // Clear previous preview contents
+  previewBody.innerHTML = '';
+  
+  // Compile print layout
+  const printArea = buildPDFMarkup();
+  
+  // Transfer compiled pages into the modal preview panel
+  const pages = Array.from(printArea.childNodes);
+  pages.forEach(page => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'pdf-page-container';
+    const clone = page.cloneNode(true);
+    wrapper.appendChild(clone);
+    previewBody.appendChild(wrapper);
+  });
+  
+  // Render and fade in
+  previewModal.style.display = 'flex';
+  setTimeout(() => {
+    previewModal.classList.add('active');
+  }, 10);
+}
+
+// Close and hide interactive PDF Preview modal
+function closePDFPreview() {
+  previewModal.classList.remove('active');
+  setTimeout(() => {
+    previewModal.style.display = 'none';
+    previewBody.innerHTML = '';
+  }, 300);
+}
+
+// Toggle between Light and Dark mode UI themes
+function toggleTheme() {
+  const isDark = document.body.classList.toggle('dark-theme');
+  localStorage.setItem('themePreference', isDark ? 'dark' : 'light');
+  updateThemeToggleIcon(isDark);
+}
+
+// Update the theme toggle SVG icon based on active theme state
+function updateThemeToggleIcon(isDark) {
+  if (isDark) {
+    // Show Sun icon in dark theme to toggle back to light theme
+    themeIcon.innerHTML = `
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.07" x2="5.64" y2="17.64"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    `;
+    themeToggleBtn.setAttribute('title', 'Switch to Light Theme');
+  } else {
+    // Show Moon icon in light theme to toggle to dark theme
+    themeIcon.innerHTML = `
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+    `;
+    themeToggleBtn.setAttribute('title', 'Switch to Dark Theme');
+  }
 }
 
 // Boot application
