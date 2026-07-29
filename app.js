@@ -119,6 +119,17 @@ function init() {
     settingsPanel.classList.toggle('collapsed');
   });
   
+  // Close settings panel when clicking outside of it
+  document.addEventListener('click', (e) => {
+    const isClickInsidePanel = settingsPanel.contains(e.target);
+    const isClickOnToggleBtn = settingsToggleBtn.contains(e.target);
+    
+    if (!isClickInsidePanel && !isClickOnToggleBtn) {
+      settingsPanel.classList.remove('expanded');
+      settingsPanel.classList.add('collapsed');
+    }
+  });
+  
   // Settings inputs listeners
   univNameInput.addEventListener('input', (e) => {
     univName = e.target.value;
