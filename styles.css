@@ -817,7 +817,9 @@ body {
   display: flex;
   align-items: center;
   gap: 24px;
-  text-align: left;
+  text-align: center;
+  position: relative;
+  justify-content: center;
 }
 
 .univ-banner-logo {
@@ -831,6 +833,10 @@ body {
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  position: absolute;
+  left: 24px;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .univ-banner-logo img {
@@ -881,6 +887,11 @@ body {
     text-align: center;
     gap: 16px;
     padding: 20px;
+  }
+  .univ-banner-logo {
+    position: static;
+    transform: none;
+    margin-bottom: 8px;
   }
 }
 

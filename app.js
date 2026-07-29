@@ -1173,14 +1173,20 @@ function buildPDFMarkup() {
       
       // 1. University Header Banner (matches Excel rows 1-3 format)
       const headerDiv = document.createElement('div');
+      headerDiv.style.position = 'relative';
       headerDiv.style.display = 'flex';
+      headerDiv.style.justifyContent = 'center';
       headerDiv.style.alignItems = 'center';
-      headerDiv.style.gap = '15px';
       headerDiv.style.borderBottom = '2px solid #000000';
       headerDiv.style.paddingBottom = '6px';
       headerDiv.style.marginBottom = '10px';
+      headerDiv.style.minHeight = '72px';
       
       const logoBox = document.createElement('div');
+      logoBox.style.position = 'absolute';
+      logoBox.style.left = '0';
+      logoBox.style.top = '50%';
+      logoBox.style.transform = 'translateY(-50%)';
       logoBox.style.width = '72px';
       logoBox.style.height = '72px';
       logoBox.style.display = 'flex';
@@ -1196,28 +1202,31 @@ function buildPDFMarkup() {
       headerDiv.appendChild(logoBox);
       
       const titleBox = document.createElement('div');
-      titleBox.style.flexGrow = '1';
+      titleBox.style.width = '100%';
       titleBox.style.display = 'flex';
       titleBox.style.flexDirection = 'column';
+      titleBox.style.alignItems = 'center';
+      titleBox.style.justifyContent = 'center';
       
       const topRow = document.createElement('div');
       topRow.style.fontSize = '26px';
       topRow.style.fontWeight = 'bold';
-      topRow.style.textAlign = 'left';
+      topRow.style.textAlign = 'center';
       topRow.textContent = univName;
       titleBox.appendChild(topRow);
       
       const middleRow = document.createElement('div');
       middleRow.style.fontSize = '18px';
       middleRow.style.fontWeight = 'bold';
-      middleRow.style.textAlign = 'left';
+      middleRow.style.textAlign = 'center';
       middleRow.style.marginTop = '2px';
       middleRow.textContent = examName;
       titleBox.appendChild(middleRow);
       
       const subRow = document.createElement('div');
       subRow.style.display = 'flex';
-      subRow.style.justifyContent = 'space-between';
+      subRow.style.justifyContent = 'center';
+      subRow.style.gap = '30px';
       subRow.style.fontSize = '18px';
       subRow.style.fontWeight = 'bold';
       subRow.style.marginTop = '2px';
