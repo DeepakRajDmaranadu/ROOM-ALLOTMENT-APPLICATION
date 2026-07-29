@@ -1121,187 +1121,221 @@ function buildPDFMarkup() {
   const dateSessionText = formattedDate ? `DATE: ${formattedDate}${examSession ? ` (${examSession.toUpperCase()})` : ''}` : "";
   
   const roomEntries = Object.entries(excelGroup);
+  let globalPageIndex = 0;
   
-  roomEntries.forEach(([roomName, coursesMap], index) => {
-    const pageDiv = document.createElement('div');
-    pageDiv.className = 'pdf-page';
-    pageDiv.style.width = '297mm';
-    pageDiv.style.height = '200mm'; // Safe size slightly under A4 height to prevent sub-pixel overflow breaks
-    pageDiv.style.padding = '8mm 12mm'; // Tighter padding for 100% single page safety
-    pageDiv.style.boxSizing = 'border-box';
-    pageDiv.style.backgroundColor = '#ffffff';
-    pageDiv.style.color = '#000000';
-    pageDiv.style.fontFamily = '"Times New Roman", Times, serif';
-    pageDiv.style.position = 'relative';
-    pageDiv.style.overflow = 'hidden'; // Avoid any sub-pixel layout spills
-    
-    if (index > 0) {
-      pageDiv.style.pageBreakBefore = 'always';
-    }
-    
-    // 1. University Header Banner (matches Excel rows 1-3 format)
-    const headerDiv = document.createElement('div');
-    headerDiv.style.display = 'flex';
-    headerDiv.style.alignItems = 'center';
-    headerDiv.style.gap = '15px';
-    headerDiv.style.borderBottom = '2px solid #000000';
-    headerDiv.style.paddingBottom = '6px';
-    headerDiv.style.marginBottom = '10px';
-    
-    const logoBox = document.createElement('div');
-    logoBox.style.width = '72px';
-    logoBox.style.height = '72px';
-    logoBox.style.display = 'flex';
-    logoBox.style.alignItems = 'center';
-    logoBox.style.justifyContent = 'center';
-    logoBox.style.border = '1px solid #333333';
-    
-    if (logoBase64) {
-      logoBox.innerHTML = `<img src="${logoBase64}" style="width:100%; height:100%; object-fit:contain;">`;
-    } else {
-      logoBox.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="#333333" stroke-width="2" style="width:48px; height:48px;"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2.5 3 6 3s6-1 6-3v-5"/></svg>`;
-    }
-    headerDiv.appendChild(logoBox);
-    
-    const titleBox = document.createElement('div');
-    titleBox.style.flexGrow = '1';
-    titleBox.style.display = 'flex';
-    titleBox.style.flexDirection = 'column';
-    
-    const topRow = document.createElement('div');
-    topRow.style.fontSize = '26px';
-    topRow.style.fontWeight = 'bold';
-    topRow.style.textAlign = 'left';
-    topRow.textContent = univName;
-    titleBox.appendChild(topRow);
-    
-    const middleRow = document.createElement('div');
-    middleRow.style.fontSize = '18px';
-    middleRow.style.fontWeight = 'bold';
-    middleRow.style.textAlign = 'left';
-    middleRow.style.marginTop = '2px';
-    middleRow.textContent = examName;
-    titleBox.appendChild(middleRow);
-    
-    const subRow = document.createElement('div');
-    subRow.style.display = 'flex';
-    subRow.style.justifyContent = 'space-between';
-    subRow.style.fontSize = '18px';
-    subRow.style.fontWeight = 'bold';
-    subRow.style.marginTop = '2px';
-    subRow.innerHTML = `
-      <span>ROOM-WISE SEATING ARRANGEMENT</span>
-      <span>${dateSessionText}</span>
-    `;
-    titleBox.appendChild(subRow);
-    
-    headerDiv.appendChild(titleBox);
-    pageDiv.appendChild(headerDiv);
-    
-    // 2. Room Seating Table (matches Excel Grid structure)
-    const table = document.createElement('table');
-    table.style.width = '100%';
-    table.style.borderCollapse = 'collapse';
-    table.style.fontFamily = '"Times New Roman", Times, serif';
-    table.style.fontSize = '12px';
-    table.style.tableLayout = 'fixed';
-    
-    const coursesList = Object.entries(coursesMap);
+  roomEntries.forEach(([roomName, coursesMap]) => {
     const R = getRoomRowCount(roomName);
     
-    let totalCols = 0;
-    const coursesLayout = coursesList.map(([courseSubjectKey, courseData]) => {
+    // Deconstruct all student list columns (block pairs) for this room
+    const roomBlocks = [];
+    Object.entries(coursesMap).forEach(([courseSubjectKey, courseData]) => {
       const neededCols = Math.ceil(courseData.students.length / R);
-      const colsCount = 2 * neededCols;
-      totalCols += colsCount;
-      return {
-        course: courseData.course,
-        subject: courseData.subject,
-        time: courseData.time,
-        students: courseData.students,
-        colsCount: colsCount
-      };
-    });
-    
-    const colgroup = document.createElement('colgroup');
-    const totalPairs = totalCols / 2;
-    coursesLayout.forEach(layout => {
-      for (let c = 0; c < layout.colsCount; c++) {
-        const col = document.createElement('col');
-        const pct = (c % 2 === 0) ? 0.25 : 0.75;
-        col.style.width = `${(100 / totalPairs) * pct}%`;
-        colgroup.appendChild(col);
+      for (let col = 0; col < neededCols; col++) {
+        roomBlocks.push({
+          course: courseData.course,
+          subject: courseData.subject,
+          time: courseData.time,
+          courseSubjectKey: courseSubjectKey,
+          blockIndex: col,
+          totalBlocksInCourse: neededCols,
+          students: courseData.students.slice(col * R, (col + 1) * R),
+          studentStartIdx: col * R,
+          totalStudentsInCourse: courseData.students.length
+        });
       }
     });
-    table.appendChild(colgroup);
     
-    // Room Name Row (height 42px, font size 20px, no background)
-    const roomRow = document.createElement('tr');
-    roomRow.style.height = '42px';
-    const roomCell = document.createElement('td');
-    roomCell.colSpan = totalCols;
-    roomCell.style.border = '1px solid #000000';
-    roomCell.style.textAlign = 'center';
-    roomCell.style.fontWeight = 'bold';
-    roomCell.style.fontSize = '20px';
-    roomCell.textContent = `ROOM NO: ${roomName}`;
-    roomRow.appendChild(roomCell);
-    table.appendChild(roomRow);
+    // Chunk the room blocks into groups of at most 7 columns (to fit nicely on A4 Landscape page)
+    const blockSize = 7;
+    const pageChunks = [];
+    for (let i = 0; i < roomBlocks.length; i += blockSize) {
+      pageChunks.push(roomBlocks.slice(i, i + blockSize));
+    }
     
-    // Course Headers Row (height 36px base, font size 18px)
-    const courseRow = document.createElement('tr');
-    let maxLines = 1;
-    coursesLayout.forEach(layout => {
-      const text = `${layout.course} | ${layout.subject} (${layout.time || ''})`;
-      const approxWidth = Math.max(14, (layout.colsCount / 2) * 15);
-      const lines = Math.ceil(text.length / approxWidth);
-      if (lines > maxLines) maxLines = lines;
-    });
-    courseRow.style.height = `${Math.max(36, maxLines * 26)}px`;
-    
-    coursesLayout.forEach(layout => {
-      const cCell = document.createElement('td');
-      cCell.colSpan = layout.colsCount;
-      cCell.style.border = '1px solid #000000';
-      cCell.style.textAlign = 'center';
-      cCell.style.fontWeight = 'bold';
-      cCell.style.fontSize = '18px';
-      cCell.style.padding = '4px';
-      cCell.style.wordWrap = 'break-word';
-      cCell.textContent = `${layout.course} | ${layout.subject} (${layout.time || ''})`;
-      courseRow.appendChild(cCell);
-    });
-    table.appendChild(courseRow);
-    
-    // Sub-Headers Row (SL NO, REGISTER NUMBER)
-    const subHeaderRow = document.createElement('tr');
-    subHeaderRow.style.height = '42px';
-    coursesLayout.forEach(layout => {
-      for (let c = 0; c < layout.colsCount; c++) {
-        const sCell = document.createElement('td');
-        sCell.style.border = '1px solid #000000';
-        sCell.style.textAlign = 'center';
-        sCell.style.fontWeight = 'bold';
-        sCell.style.fontSize = '15px';
-        sCell.style.padding = '4px 2px';
-        sCell.style.wordWrap = 'break-word';
-        sCell.style.whiteSpace = 'normal';
-        sCell.textContent = (c % 2 === 0) ? "SL NO" : "REGISTER NUMBER";
-        subHeaderRow.appendChild(sCell);
-      }
-    });
-    table.appendChild(subHeaderRow);
-    
-    // Student Data Rows
-    for (let r = 0; r < R; r++) {
-      const dataRow = document.createElement('tr');
-      dataRow.style.height = '28px';
+    // Render a separate A4 Landscape page for each chunk
+    pageChunks.forEach((pageChunk) => {
+      const pageDiv = document.createElement('div');
+      pageDiv.className = 'pdf-page';
+      pageDiv.style.width = '297mm';
+      pageDiv.style.height = '200mm'; // Safe size slightly under A4 height to prevent sub-pixel overflow breaks
+      pageDiv.style.padding = '8mm 12mm'; // Tighter padding for 100% single page safety
+      pageDiv.style.boxSizing = 'border-box';
+      pageDiv.style.backgroundColor = '#ffffff';
+      pageDiv.style.color = '#000000';
+      pageDiv.style.fontFamily = '"Times New Roman", Times, serif';
+      pageDiv.style.position = 'relative';
+      pageDiv.style.overflow = 'hidden'; // Avoid any sub-pixel layout spills
       
-      coursesLayout.forEach(layout => {
-        const neededCols = layout.colsCount / 2;
-        for (let col = 0; col < neededCols; col++) {
-          const studentIdx = col * R + r;
-          const student = layout.students[studentIdx];
+      if (globalPageIndex > 0) {
+        pageDiv.style.pageBreakBefore = 'always';
+      }
+      globalPageIndex++;
+      
+      // 1. University Header Banner (matches Excel rows 1-3 format)
+      const headerDiv = document.createElement('div');
+      headerDiv.style.display = 'flex';
+      headerDiv.style.alignItems = 'center';
+      headerDiv.style.gap = '15px';
+      headerDiv.style.borderBottom = '2px solid #000000';
+      headerDiv.style.paddingBottom = '6px';
+      headerDiv.style.marginBottom = '10px';
+      
+      const logoBox = document.createElement('div');
+      logoBox.style.width = '72px';
+      logoBox.style.height = '72px';
+      logoBox.style.display = 'flex';
+      logoBox.style.alignItems = 'center';
+      logoBox.style.justifyContent = 'center';
+      logoBox.style.border = '1px solid #333333';
+      
+      if (logoBase64) {
+        logoBox.innerHTML = `<img src="${logoBase64}" style="width:100%; height:100%; object-fit:contain;">`;
+      } else {
+        logoBox.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="#333333" stroke-width="2" style="width:48px; height:48px;"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2.5 3 6 3s6-1 6-3v-5"/></svg>`;
+      }
+      headerDiv.appendChild(logoBox);
+      
+      const titleBox = document.createElement('div');
+      titleBox.style.flexGrow = '1';
+      titleBox.style.display = 'flex';
+      titleBox.style.flexDirection = 'column';
+      
+      const topRow = document.createElement('div');
+      topRow.style.fontSize = '26px';
+      topRow.style.fontWeight = 'bold';
+      topRow.style.textAlign = 'left';
+      topRow.textContent = univName;
+      titleBox.appendChild(topRow);
+      
+      const middleRow = document.createElement('div');
+      middleRow.style.fontSize = '18px';
+      middleRow.style.fontWeight = 'bold';
+      middleRow.style.textAlign = 'left';
+      middleRow.style.marginTop = '2px';
+      middleRow.textContent = examName;
+      titleBox.appendChild(middleRow);
+      
+      const subRow = document.createElement('div');
+      subRow.style.display = 'flex';
+      subRow.style.justifyContent = 'space-between';
+      subRow.style.fontSize = '18px';
+      subRow.style.fontWeight = 'bold';
+      subRow.style.marginTop = '2px';
+      subRow.innerHTML = `
+        <span>ROOM-WISE SEATING ARRANGEMENT</span>
+        <span>${dateSessionText}</span>
+      `;
+      titleBox.appendChild(subRow);
+      
+      headerDiv.appendChild(titleBox);
+      pageDiv.appendChild(headerDiv);
+      
+      // 2. Room Seating Table (matches Excel Grid structure)
+      const table = document.createElement('table');
+      table.style.width = '100%';
+      table.style.borderCollapse = 'collapse';
+      table.style.fontFamily = '"Times New Roman", Times, serif';
+      table.style.fontSize = '12px';
+      table.style.tableLayout = 'fixed';
+      
+      const totalCols = pageChunk.length * 2;
+      const totalPairs = pageChunk.length;
+      
+      const colgroup = document.createElement('colgroup');
+      pageChunk.forEach(() => {
+        for (let c = 0; c < 2; c++) {
+          const col = document.createElement('col');
+          const pct = (c % 2 === 0) ? 0.25 : 0.75;
+          col.style.width = `${(100 / totalPairs) * pct}%`;
+          colgroup.appendChild(col);
+        }
+      });
+      table.appendChild(colgroup);
+      
+      // Room Name Row (height 42px, font size 20px, no background)
+      const roomRow = document.createElement('tr');
+      roomRow.style.height = '42px';
+      const roomCell = document.createElement('td');
+      roomCell.colSpan = totalCols;
+      roomCell.style.border = '1px solid #000000';
+      roomCell.style.textAlign = 'center';
+      roomCell.style.fontWeight = 'bold';
+      roomCell.style.fontSize = '20px';
+      roomCell.textContent = `ROOM NO: ${roomName}`;
+      roomRow.appendChild(roomCell);
+      table.appendChild(roomRow);
+      
+      // Group adjacent blocks by their courseSubjectKey to draw merged Course Headers
+      const courseHeaders = [];
+      let currentHeader = null;
+      pageChunk.forEach(block => {
+        if (!currentHeader || currentHeader.courseSubjectKey !== block.courseSubjectKey) {
+          currentHeader = {
+            course: block.course,
+            subject: block.subject,
+            time: block.time,
+            courseSubjectKey: block.courseSubjectKey,
+            colsCount: 2,
+            totalStudentsCount: block.totalStudentsInCourse
+          };
+          courseHeaders.push(currentHeader);
+        } else {
+          currentHeader.colsCount += 2;
+        }
+      });
+      
+      // Course Headers Row (height 36px base, font size 18px)
+      const courseRow = document.createElement('tr');
+      let maxLines = 1;
+      courseHeaders.forEach(header => {
+        const text = `${header.course} | ${header.subject} (${header.time || ''})`;
+        const approxWidth = Math.max(14, (header.colsCount / 2) * 15);
+        const lines = Math.ceil(text.length / approxWidth);
+        if (lines > maxLines) maxLines = lines;
+      });
+      courseRow.style.height = `${Math.max(36, maxLines * 26)}px`;
+      
+      courseHeaders.forEach(header => {
+        const cCell = document.createElement('td');
+        cCell.colSpan = header.colsCount;
+        cCell.style.border = '1px solid #000000';
+        cCell.style.textAlign = 'center';
+        cCell.style.fontWeight = 'bold';
+        cCell.style.fontSize = '18px';
+        cCell.style.padding = '4px';
+        cCell.style.wordWrap = 'break-word';
+        cCell.textContent = `${header.course} | ${header.subject} (${header.time || ''})`;
+        courseRow.appendChild(cCell);
+      });
+      table.appendChild(courseRow);
+      
+      // Sub-Headers Row (SL NO, REGISTER NUMBER)
+      const subHeaderRow = document.createElement('tr');
+      subHeaderRow.style.height = '42px';
+      pageChunk.forEach(() => {
+        for (let c = 0; c < 2; c++) {
+          const sCell = document.createElement('td');
+          sCell.style.border = '1px solid #000000';
+          sCell.style.textAlign = 'center';
+          sCell.style.fontWeight = 'bold';
+          sCell.style.fontSize = '15px';
+          sCell.style.padding = '4px 2px';
+          sCell.style.wordWrap = 'break-word';
+          sCell.style.whiteSpace = 'normal';
+          sCell.textContent = (c % 2 === 0) ? "SL NO" : "REGISTER NUMBER";
+          subHeaderRow.appendChild(sCell);
+        }
+      });
+      table.appendChild(subHeaderRow);
+      
+      // Student Data Rows
+      for (let r = 0; r < R; r++) {
+        const dataRow = document.createElement('tr');
+        dataRow.style.height = '28px';
+        
+        pageChunk.forEach(block => {
+          const student = block.students[r];
+          const studentIdx = block.studentStartIdx + r;
           
           const slCell = document.createElement('td');
           slCell.style.border = '1px solid #000000';
@@ -1329,29 +1363,29 @@ function buildPDFMarkup() {
           
           dataRow.appendChild(slCell);
           dataRow.appendChild(regCell);
-        }
+        });
+        table.appendChild(dataRow);
+      }
+      
+      // Count Row
+      const countRow = document.createElement('tr');
+      countRow.style.height = '42px';
+      courseHeaders.forEach(header => {
+        const coCell = document.createElement('td');
+        coCell.colSpan = header.colsCount;
+        coCell.style.border = '1px solid #000000';
+        coCell.style.textAlign = 'center';
+        coCell.style.fontWeight = 'bold';
+        coCell.style.fontSize = '16px';
+        coCell.style.padding = '6px';
+        coCell.textContent = `COUNT - ${header.totalStudentsCount}`;
+        countRow.appendChild(coCell);
       });
-      table.appendChild(dataRow);
-    }
-    
-    // Count Row
-    const countRow = document.createElement('tr');
-    countRow.style.height = '42px';
-    coursesLayout.forEach(layout => {
-      const coCell = document.createElement('td');
-      coCell.colSpan = layout.colsCount;
-      coCell.style.border = '1px solid #000000';
-      coCell.style.textAlign = 'center';
-      coCell.style.fontWeight = 'bold';
-      coCell.style.fontSize = '16px';
-      coCell.style.padding = '6px';
-      coCell.textContent = `COUNT - ${layout.students.length}`;
-      countRow.appendChild(coCell);
+      table.appendChild(countRow);
+      
+      pageDiv.appendChild(table);
+      printArea.appendChild(pageDiv);
     });
-    table.appendChild(countRow);
-    
-    pageDiv.appendChild(table);
-    printArea.appendChild(pageDiv);
   });
   
   return printArea;
