@@ -39,6 +39,7 @@ let pdfOrientation = "landscape";
 let pdfFontSizeHeading = 16;
 let pdfFontSizeValue = 14;
 let pdfLogoSize = 72;
+let pageUniformColumns = {};
 
 // DOM Elements
 const roomInput = document.getElementById('roomInput');
@@ -122,6 +123,11 @@ function init() {
   pdfFontSizeHeading = parseInt(localStorage.getItem('pdfFontSizeHeading'), 10) || 16;
   pdfFontSizeValue = parseInt(localStorage.getItem('pdfFontSizeValue'), 10) || 14;
   pdfLogoSize = parseInt(localStorage.getItem('pdfLogoSize'), 10) || 72;
+  try {
+    pageUniformColumns = JSON.parse(localStorage.getItem('pageUniformColumns')) || {};
+  } catch (e) {
+    pageUniformColumns = {};
+  }
   
   univNameInput.value = univName;
   examNameInput.value = examName;
@@ -213,6 +219,9 @@ function init() {
   uniformColumnsInput.addEventListener('change', (e) => {
     uniformPdfColumns = e.target.checked;
     localStorage.setItem('uniformPdfColumns', uniformPdfColumns ? 'true' : 'false');
+    // Clear individual page overrides when global uniform columns option changes
+    pageUniformColumns = {};
+    localStorage.removeItem('pageUniformColumns');
     if (previewModal.classList.contains('active')) {
       showPDFPreview();
     }
@@ -1266,6 +1275,8 @@ function buildPDFMarkup() {
     pageChunks.forEach((pageChunk, chunkIdx) => {
       const pageDiv = document.createElement('div');
       pageDiv.className = 'pdf-page';
+      pageDiv.dataset.roomName = roomName;
+      pageDiv.dataset.chunkIdx = chunkIdx;
       pageDiv.style.width = pageWidth;
       pageDiv.style.height = pageHeight;
       pageDiv.style.padding = isLandscape ? '8mm 12mm' : '8mm 8mm';
@@ -1359,7 +1370,9 @@ function buildPDFMarkup() {
       
       // 2. Room Seating Table (matches Excel Grid structure)
       const table = document.createElement('table');
-      if (uniformPdfColumns) {
+      const pageKey = `${roomName}::${chunkIdx}`;
+      const isPageUniform = pageUniformColumns[pageKey] !== undefined ? pageUniformColumns[pageKey] : uniformPdfColumns;
+      if (isPageUniform) {
         table.style.width = `${(pageChunk.length / blockSize) * 100}%`;
       } else {
         table.style.width = '100%';
@@ -1594,12 +1607,56 @@ function showPDFPreview() {
   
   // Transfer compiled pages into the modal preview panel
   const pages = Array.from(printArea.childNodes);
+  const isLandscape = pdfOrientation === 'landscape';
+  const mmWidth = isLandscape ? 297 : 210;
+  
   pages.forEach(page => {
+    const roomName = page.dataset.roomName;
+    const chunkIdx = parseInt(page.dataset.chunkIdx, 10);
+    const pageKey = `${roomName}::${chunkIdx}`;
+    
+    const sheetWrapper = document.createElement('div');
+    sheetWrapper.className = 'pdf-preview-sheet-wrapper';
+    sheetWrapper.style.width = `calc(${mmWidth}mm * var(--pdf-scale, 0.9))`;
+    
+    const controls = document.createElement('div');
+    controls.className = 'pdf-page-controls';
+    
+    const label = document.createElement('span');
+    label.className = 'pdf-page-label';
+    label.textContent = `Room ${roomName} - Page ${chunkIdx + 1}`;
+    controls.appendChild(label);
+    
+    const chkLabel = document.createElement('label');
+    chkLabel.className = 'pdf-page-chk-label';
+    
+    const chk = document.createElement('input');
+    chk.type = 'checkbox';
+    chk.className = 'pdf-page-chk';
+    const isPageUniform = pageUniformColumns[pageKey] !== undefined ? pageUniformColumns[pageKey] : uniformPdfColumns;
+    chk.checked = isPageUniform;
+    
+    chk.addEventListener('change', (e) => {
+      pageUniformColumns[pageKey] = e.target.checked;
+      localStorage.setItem('pageUniformColumns', JSON.stringify(pageUniformColumns));
+      showPDFPreview();
+    });
+    
+    const chkText = document.createElement('span');
+    chkText.textContent = 'Uniform Width';
+    
+    chkLabel.appendChild(chk);
+    chkLabel.appendChild(chkText);
+    controls.appendChild(chkLabel);
+    sheetWrapper.appendChild(controls);
+    
     const wrapper = document.createElement('div');
     wrapper.className = 'pdf-page-container';
     const clone = page.cloneNode(true);
     wrapper.appendChild(clone);
-    previewBody.appendChild(wrapper);
+    sheetWrapper.appendChild(wrapper);
+    
+    previewBody.appendChild(sheetWrapper);
   });
   
   // Render and fade in
