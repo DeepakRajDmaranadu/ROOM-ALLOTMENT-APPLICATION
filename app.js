@@ -40,6 +40,7 @@ let pdfFontSizeHeading = 16;
 let pdfFontSizeValue = 14;
 let pdfLogoSize = 72;
 let pageUniformColumns = {};
+let pdfHeaderAlign = "center";
 
 // DOM Elements
 const roomInput = document.getElementById('roomInput');
@@ -80,6 +81,7 @@ const repeatHeaderInput = document.getElementById('repeatHeaderInput');
 const pdfFontSizeHeadingInput = document.getElementById('pdfFontSizeHeadingInput');
 const pdfFontSizeValueInput = document.getElementById('pdfFontSizeValueInput');
 const pdfLogoSizeInput = document.getElementById('pdfLogoSizeInput');
+const pdfHeaderAlignInput = document.getElementById('pdfHeaderAlignInput');
 
 // Load initial state
 function init() {
@@ -123,6 +125,7 @@ function init() {
   pdfFontSizeHeading = parseInt(localStorage.getItem('pdfFontSizeHeading'), 10) || 16;
   pdfFontSizeValue = parseInt(localStorage.getItem('pdfFontSizeValue'), 10) || 14;
   pdfLogoSize = parseInt(localStorage.getItem('pdfLogoSize'), 10) || 72;
+  pdfHeaderAlign = localStorage.getItem('pdfHeaderAlign') || "center";
   try {
     pageUniformColumns = JSON.parse(localStorage.getItem('pageUniformColumns')) || {};
   } catch (e) {
@@ -138,6 +141,7 @@ function init() {
   pdfFontSizeHeadingInput.value = pdfFontSizeHeading;
   pdfFontSizeValueInput.value = pdfFontSizeValue;
   pdfLogoSizeInput.value = pdfLogoSize;
+  pdfHeaderAlignInput.value = pdfHeaderAlign;
   
   if (pdfOrientation === 'portrait') {
     document.getElementById('orientPortrait').checked = true;
@@ -289,6 +293,14 @@ function init() {
     pdfLogoSize = val;
     pdfLogoSizeInput.value = val;
     localStorage.setItem('pdfLogoSize', val);
+    if (previewModal.classList.contains('active')) {
+      showPDFPreview();
+    }
+  });
+  
+  pdfHeaderAlignInput.addEventListener('change', (e) => {
+    pdfHeaderAlign = e.target.value;
+    localStorage.setItem('pdfHeaderAlign', pdfHeaderAlign);
     if (previewModal.classList.contains('active')) {
       showPDFPreview();
     }
@@ -1298,16 +1310,16 @@ function buildPDFMarkup() {
         headerDiv.style.position = 'relative';
         headerDiv.style.display = 'flex';
         headerDiv.style.flexDirection = 'column';
-        headerDiv.style.alignItems = 'center';
+        headerDiv.style.alignItems = (pdfHeaderAlign === 'left') ? 'flex-start' : (pdfHeaderAlign === 'right') ? 'flex-end' : 'center';
         headerDiv.style.paddingBottom = '6px';
         headerDiv.style.marginBottom = '10px';
         
         // Top Row: Logo + University & Examination Heading
         const topRowContainer = document.createElement('div');
         topRowContainer.style.display = 'flex';
-        topRowContainer.style.flexDirection = 'row';
+        topRowContainer.style.flexDirection = (pdfHeaderAlign === 'right') ? 'row-reverse' : 'row';
         topRowContainer.style.alignItems = 'center';
-        topRowContainer.style.justifyContent = 'center';
+        topRowContainer.style.justifyContent = (pdfHeaderAlign === 'left') ? 'flex-start' : (pdfHeaderAlign === 'right') ? 'flex-end' : 'center';
         topRowContainer.style.gap = '20px';
         topRowContainer.style.width = '100%';
         
@@ -1331,19 +1343,19 @@ function buildPDFMarkup() {
         const textBlock = document.createElement('div');
         textBlock.style.display = 'flex';
         textBlock.style.flexDirection = 'column';
-        textBlock.style.alignItems = 'center';
+        textBlock.style.alignItems = (pdfHeaderAlign === 'left') ? 'flex-start' : (pdfHeaderAlign === 'right') ? 'flex-end' : 'center';
         
         const univTitle = document.createElement('div');
         univTitle.style.fontSize = `${pdfFontSizeHeading + 10}px`;
         univTitle.style.fontWeight = 'bold';
-        univTitle.style.textAlign = 'center';
+        univTitle.style.textAlign = pdfHeaderAlign;
         univTitle.textContent = univName;
         textBlock.appendChild(univTitle);
         
         const examTitle = document.createElement('div');
         examTitle.style.fontSize = `${pdfFontSizeHeading + 2}px`;
         examTitle.style.fontWeight = 'bold';
-        examTitle.style.textAlign = 'center';
+        examTitle.style.textAlign = pdfHeaderAlign;
         examTitle.style.marginTop = '2px';
         examTitle.textContent = examName;
         textBlock.appendChild(examTitle);
@@ -1354,7 +1366,8 @@ function buildPDFMarkup() {
         // Bottom Row: Seating Title + Date info
         const bottomRowContainer = document.createElement('div');
         bottomRowContainer.style.display = 'flex';
-        bottomRowContainer.style.justifyContent = 'center';
+        bottomRowContainer.style.width = '100%';
+        bottomRowContainer.style.justifyContent = (pdfHeaderAlign === 'left') ? 'flex-start' : (pdfHeaderAlign === 'right') ? 'flex-end' : 'center';
         bottomRowContainer.style.gap = isLandscape ? '30px' : '15px';
         bottomRowContainer.style.fontSize = `${pdfFontSizeHeading + 2}px`;
         bottomRowContainer.style.fontWeight = 'bold';
