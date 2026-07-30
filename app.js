@@ -34,6 +34,7 @@ let examDate = "";
 let examSession = "";
 let logoBase64 = "";
 let uniformPdfColumns = false;
+let repeatPdfHeader = true;
 
 // DOM Elements
 const roomInput = document.getElementById('roomInput');
@@ -70,6 +71,7 @@ const logoFileInput = document.getElementById('logoFileInput');
 const removeLogoBtn = document.getElementById('removeLogoBtn');
 const fileNameLabel = document.getElementById('fileNameLabel');
 const uniformColumnsInput = document.getElementById('uniformColumnsInput');
+const repeatHeaderInput = document.getElementById('repeatHeaderInput');
 
 // Load initial state
 function init() {
@@ -107,12 +109,15 @@ function init() {
   examSession = localStorage.getItem('examSession') || "";
   logoBase64 = localStorage.getItem('logoBase64') || "";
   uniformPdfColumns = localStorage.getItem('uniformPdfColumns') === 'true';
+  const storedRepeat = localStorage.getItem('repeatPdfHeader');
+  repeatPdfHeader = storedRepeat !== null ? storedRepeat === 'true' : true;
   
   univNameInput.value = univName;
   examNameInput.value = examName;
   examDateInput.value = examDate;
   examSessionInput.value = examSession;
   uniformColumnsInput.checked = uniformPdfColumns;
+  repeatHeaderInput.checked = repeatPdfHeader;
   if (logoBase64) {
     fileNameLabel.textContent = "Logo image loaded";
   }
@@ -187,6 +192,15 @@ function init() {
   uniformColumnsInput.addEventListener('change', (e) => {
     uniformPdfColumns = e.target.checked;
     localStorage.setItem('uniformPdfColumns', uniformPdfColumns ? 'true' : 'false');
+    if (previewModal.classList.contains('active')) {
+      showPDFPreview();
+    }
+  });
+  
+  // Repeat PDF Header checkbox toggle listener
+  repeatHeaderInput.addEventListener('change', (e) => {
+    repeatPdfHeader = e.target.checked;
+    localStorage.setItem('repeatPdfHeader', repeatPdfHeader ? 'true' : 'false');
     if (previewModal.classList.contains('active')) {
       showPDFPreview();
     }
@@ -1166,7 +1180,7 @@ function buildPDFMarkup() {
     }
     
     // Render a separate A4 Landscape page for each chunk
-    pageChunks.forEach((pageChunk) => {
+    pageChunks.forEach((pageChunk, chunkIdx) => {
       const pageDiv = document.createElement('div');
       pageDiv.className = 'pdf-page';
       pageDiv.style.width = '297mm';
@@ -1185,72 +1199,74 @@ function buildPDFMarkup() {
       globalPageIndex++;
       
       // 1. University Header Banner (matches Excel rows 1-3 format)
-      const headerDiv = document.createElement('div');
-      headerDiv.style.position = 'relative';
-      headerDiv.style.display = 'flex';
-      headerDiv.style.justifyContent = 'center';
-      headerDiv.style.alignItems = 'center';
-      headerDiv.style.borderBottom = '2px solid #000000';
-      headerDiv.style.paddingBottom = '6px';
-      headerDiv.style.marginBottom = '10px';
-      headerDiv.style.minHeight = '72px';
-      
-      const logoBox = document.createElement('div');
-      logoBox.style.position = 'absolute';
-      logoBox.style.left = '0';
-      logoBox.style.top = '50%';
-      logoBox.style.transform = 'translateY(-50%)';
-      logoBox.style.width = '72px';
-      logoBox.style.height = '72px';
-      logoBox.style.display = 'flex';
-      logoBox.style.alignItems = 'center';
-      logoBox.style.justifyContent = 'center';
-      logoBox.style.border = '1px solid #333333';
-      
-      if (logoBase64) {
-        logoBox.innerHTML = `<img src="${logoBase64}" style="width:100%; height:100%; object-fit:contain;">`;
-      } else {
-        logoBox.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="#333333" stroke-width="2" style="width:48px; height:48px;"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2.5 3 6 3s6-1 6-3v-5"/></svg>`;
+      if (repeatPdfHeader || chunkIdx === 0) {
+        const headerDiv = document.createElement('div');
+        headerDiv.style.position = 'relative';
+        headerDiv.style.display = 'flex';
+        headerDiv.style.justifyContent = 'center';
+        headerDiv.style.alignItems = 'center';
+        headerDiv.style.borderBottom = '2px solid #000000';
+        headerDiv.style.paddingBottom = '6px';
+        headerDiv.style.marginBottom = '10px';
+        headerDiv.style.minHeight = '72px';
+        
+        const logoBox = document.createElement('div');
+        logoBox.style.position = 'absolute';
+        logoBox.style.left = '0';
+        logoBox.style.top = '50%';
+        logoBox.style.transform = 'translateY(-50%)';
+        logoBox.style.width = '72px';
+        logoBox.style.height = '72px';
+        logoBox.style.display = 'flex';
+        logoBox.style.alignItems = 'center';
+        logoBox.style.justifyContent = 'center';
+        logoBox.style.border = '1px solid #333333';
+        
+        if (logoBase64) {
+          logoBox.innerHTML = `<img src="${logoBase64}" style="width:100%; height:100%; object-fit:contain;">`;
+        } else {
+          logoBox.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="#333333" stroke-width="2" style="width:48px; height:48px;"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2.5 3 6 3s6-1 6-3v-5"/></svg>`;
+        }
+        headerDiv.appendChild(logoBox);
+        
+        const titleBox = document.createElement('div');
+        titleBox.style.width = '100%';
+        titleBox.style.display = 'flex';
+        titleBox.style.flexDirection = 'column';
+        titleBox.style.alignItems = 'center';
+        titleBox.style.justifyContent = 'center';
+        
+        const topRow = document.createElement('div');
+        topRow.style.fontSize = '26px';
+        topRow.style.fontWeight = 'bold';
+        topRow.style.textAlign = 'center';
+        topRow.textContent = univName;
+        titleBox.appendChild(topRow);
+        
+        const middleRow = document.createElement('div');
+        middleRow.style.fontSize = '18px';
+        middleRow.style.fontWeight = 'bold';
+        middleRow.style.textAlign = 'center';
+        middleRow.style.marginTop = '2px';
+        middleRow.textContent = examName;
+        titleBox.appendChild(middleRow);
+        
+        const subRow = document.createElement('div');
+        subRow.style.display = 'flex';
+        subRow.style.justifyContent = 'center';
+        subRow.style.gap = '30px';
+        subRow.style.fontSize = '18px';
+        subRow.style.fontWeight = 'bold';
+        subRow.style.marginTop = '2px';
+        subRow.innerHTML = `
+          <span>ROOM-WISE SEATING ARRANGEMENT</span>
+          <span>${dateSessionText}</span>
+        `;
+        titleBox.appendChild(subRow);
+        
+        headerDiv.appendChild(titleBox);
+        pageDiv.appendChild(headerDiv);
       }
-      headerDiv.appendChild(logoBox);
-      
-      const titleBox = document.createElement('div');
-      titleBox.style.width = '100%';
-      titleBox.style.display = 'flex';
-      titleBox.style.flexDirection = 'column';
-      titleBox.style.alignItems = 'center';
-      titleBox.style.justifyContent = 'center';
-      
-      const topRow = document.createElement('div');
-      topRow.style.fontSize = '26px';
-      topRow.style.fontWeight = 'bold';
-      topRow.style.textAlign = 'center';
-      topRow.textContent = univName;
-      titleBox.appendChild(topRow);
-      
-      const middleRow = document.createElement('div');
-      middleRow.style.fontSize = '18px';
-      middleRow.style.fontWeight = 'bold';
-      middleRow.style.textAlign = 'center';
-      middleRow.style.marginTop = '2px';
-      middleRow.textContent = examName;
-      titleBox.appendChild(middleRow);
-      
-      const subRow = document.createElement('div');
-      subRow.style.display = 'flex';
-      subRow.style.justifyContent = 'center';
-      subRow.style.gap = '30px';
-      subRow.style.fontSize = '18px';
-      subRow.style.fontWeight = 'bold';
-      subRow.style.marginTop = '2px';
-      subRow.innerHTML = `
-        <span>ROOM-WISE SEATING ARRANGEMENT</span>
-        <span>${dateSessionText}</span>
-      `;
-      titleBox.appendChild(subRow);
-      
-      headerDiv.appendChild(titleBox);
-      pageDiv.appendChild(headerDiv);
       
       // 2. Room Seating Table (matches Excel Grid structure)
       const table = document.createElement('table');
