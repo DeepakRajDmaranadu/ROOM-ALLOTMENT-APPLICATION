@@ -36,6 +36,8 @@ let logoBase64 = "";
 let uniformPdfColumns = false;
 let repeatPdfHeader = true;
 let pdfOrientation = "landscape";
+let pdfFontSizeHeading = 16;
+let pdfFontSizeValue = 14;
 
 // DOM Elements
 const roomInput = document.getElementById('roomInput');
@@ -73,6 +75,8 @@ const removeLogoBtn = document.getElementById('removeLogoBtn');
 const fileNameLabel = document.getElementById('fileNameLabel');
 const uniformColumnsInput = document.getElementById('uniformColumnsInput');
 const repeatHeaderInput = document.getElementById('repeatHeaderInput');
+const pdfFontSizeHeadingInput = document.getElementById('pdfFontSizeHeadingInput');
+const pdfFontSizeValueInput = document.getElementById('pdfFontSizeValueInput');
 
 // Load initial state
 function init() {
@@ -113,6 +117,8 @@ function init() {
   const storedRepeat = localStorage.getItem('repeatPdfHeader');
   repeatPdfHeader = storedRepeat !== null ? storedRepeat === 'true' : true;
   pdfOrientation = localStorage.getItem('pdfOrientation') || 'landscape';
+  pdfFontSizeHeading = parseInt(localStorage.getItem('pdfFontSizeHeading'), 10) || 16;
+  pdfFontSizeValue = parseInt(localStorage.getItem('pdfFontSizeValue'), 10) || 14;
   
   univNameInput.value = univName;
   examNameInput.value = examName;
@@ -120,6 +126,8 @@ function init() {
   examSessionInput.value = examSession;
   uniformColumnsInput.checked = uniformPdfColumns;
   repeatHeaderInput.checked = repeatPdfHeader;
+  pdfFontSizeHeadingInput.value = pdfFontSizeHeading;
+  pdfFontSizeValueInput.value = pdfFontSizeValue;
   
   if (pdfOrientation === 'portrait') {
     document.getElementById('orientPortrait').checked = true;
@@ -233,6 +241,31 @@ function init() {
       if (previewModal.classList.contains('active')) {
         showPDFPreview();
       }
+    }
+  });
+  
+  // Font size change listeners
+  pdfFontSizeHeadingInput.addEventListener('change', (e) => {
+    let val = parseInt(e.target.value, 10);
+    if (isNaN(val) || val < 8) val = 8;
+    if (val > 48) val = 48;
+    pdfFontSizeHeading = val;
+    pdfFontSizeHeadingInput.value = val;
+    localStorage.setItem('pdfFontSizeHeading', val);
+    if (previewModal.classList.contains('active')) {
+      showPDFPreview();
+    }
+  });
+  
+  pdfFontSizeValueInput.addEventListener('change', (e) => {
+    let val = parseInt(e.target.value, 10);
+    if (isNaN(val) || val < 6) val = 6;
+    if (val > 36) val = 36;
+    pdfFontSizeValue = val;
+    pdfFontSizeValueInput.value = val;
+    localStorage.setItem('pdfFontSizeValue', val);
+    if (previewModal.classList.contains('active')) {
+      showPDFPreview();
     }
   });
   
@@ -1270,14 +1303,14 @@ function buildPDFMarkup() {
         titleBox.style.justifyContent = 'center';
         
         const topRow = document.createElement('div');
-        topRow.style.fontSize = isLandscape ? '26px' : '22px';
+        topRow.style.fontSize = `${pdfFontSizeHeading + 10}px`;
         topRow.style.fontWeight = 'bold';
         topRow.style.textAlign = 'center';
         topRow.textContent = univName;
         titleBox.appendChild(topRow);
         
         const middleRow = document.createElement('div');
-        middleRow.style.fontSize = isLandscape ? '18px' : '15px';
+        middleRow.style.fontSize = `${pdfFontSizeHeading + 2}px`;
         middleRow.style.fontWeight = 'bold';
         middleRow.style.textAlign = 'center';
         middleRow.style.marginTop = '2px';
@@ -1288,7 +1321,7 @@ function buildPDFMarkup() {
         subRow.style.display = 'flex';
         subRow.style.justifyContent = 'center';
         subRow.style.gap = isLandscape ? '30px' : '15px';
-        subRow.style.fontSize = isLandscape ? '18px' : '14px';
+        subRow.style.fontSize = `${pdfFontSizeHeading + 2}px`;
         subRow.style.fontWeight = 'bold';
         subRow.style.marginTop = '2px';
         subRow.innerHTML = `
@@ -1335,7 +1368,7 @@ function buildPDFMarkup() {
       roomCell.style.border = '1px solid #000000';
       roomCell.style.textAlign = 'center';
       roomCell.style.fontWeight = 'bold';
-      roomCell.style.fontSize = '20px';
+      roomCell.style.fontSize = `${pdfFontSizeHeading + 4}px`;
       roomCell.textContent = `ROOM NO: ${roomName}`;
       roomRow.appendChild(roomCell);
       table.appendChild(roomRow);
@@ -1376,7 +1409,7 @@ function buildPDFMarkup() {
         cCell.style.border = '1px solid #000000';
         cCell.style.textAlign = 'center';
         cCell.style.fontWeight = 'bold';
-        cCell.style.fontSize = isLandscape ? '18px' : '15px';
+        cCell.style.fontSize = `${pdfFontSizeHeading + 2}px`;
         cCell.style.padding = '4px';
         cCell.style.wordWrap = 'break-word';
         cCell.textContent = `${header.course} | ${header.subject} (${header.time || ''})`;
@@ -1393,7 +1426,7 @@ function buildPDFMarkup() {
           sCell.style.border = '1px solid #000000';
           sCell.style.textAlign = 'center';
           sCell.style.fontWeight = 'bold';
-          sCell.style.fontSize = isLandscape ? '15px' : '13px';
+          sCell.style.fontSize = `${pdfFontSizeHeading - 1}px`;
           sCell.style.padding = '4px 2px';
           sCell.style.wordWrap = 'break-word';
           sCell.style.whiteSpace = 'normal';
@@ -1415,7 +1448,7 @@ function buildPDFMarkup() {
           const slCell = document.createElement('td');
           slCell.style.border = '1px solid #000000';
           slCell.style.textAlign = 'center';
-          slCell.style.fontSize = isLandscape ? '14px' : '12px';
+          slCell.style.fontSize = `${pdfFontSizeValue - 1}px`;
           slCell.style.padding = '4px 2px';
           slCell.style.wordWrap = 'break-word';
           slCell.style.whiteSpace = 'normal';
@@ -1423,7 +1456,7 @@ function buildPDFMarkup() {
           const regCell = document.createElement('td');
           regCell.style.border = '1px solid #000000';
           regCell.style.textAlign = 'center';
-          regCell.style.fontSize = isLandscape ? '15px' : '13px';
+          regCell.style.fontSize = `${pdfFontSizeValue}px`;
           regCell.style.padding = '4px 2px';
           regCell.style.wordWrap = 'break-word';
           regCell.style.whiteSpace = 'normal';
@@ -1451,7 +1484,7 @@ function buildPDFMarkup() {
         coCell.style.border = '1px solid #000000';
         coCell.style.textAlign = 'center';
         coCell.style.fontWeight = 'bold';
-        coCell.style.fontSize = isLandscape ? '16px' : '14px';
+        coCell.style.fontSize = `${pdfFontSizeHeading}px`;
         coCell.style.padding = '6px';
         coCell.textContent = `COUNT - ${header.totalStudentsCount}`;
         countRow.appendChild(coCell);
