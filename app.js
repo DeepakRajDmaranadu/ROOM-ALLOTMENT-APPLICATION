@@ -1270,67 +1270,73 @@ function buildPDFMarkup() {
         const headerDiv = document.createElement('div');
         headerDiv.style.position = 'relative';
         headerDiv.style.display = 'flex';
-        headerDiv.style.justifyContent = 'center';
+        headerDiv.style.flexDirection = 'column';
         headerDiv.style.alignItems = 'center';
         headerDiv.style.paddingBottom = '6px';
         headerDiv.style.marginBottom = '10px';
-        headerDiv.style.minHeight = '72px';
+        
+        // Top Row: Logo + University & Examination Heading
+        const topRowContainer = document.createElement('div');
+        topRowContainer.style.display = 'flex';
+        topRowContainer.style.flexDirection = 'row';
+        topRowContainer.style.alignItems = 'center';
+        topRowContainer.style.justifyContent = 'center';
+        topRowContainer.style.gap = '20px';
+        topRowContainer.style.width = '100%';
         
         const logoBox = document.createElement('div');
-        logoBox.style.position = 'absolute';
-        logoBox.style.left = '0';
-        logoBox.style.top = '50%';
-        logoBox.style.transform = 'translateY(-50%)';
         logoBox.style.width = '72px';
         logoBox.style.height = '72px';
         logoBox.style.display = 'flex';
         logoBox.style.alignItems = 'center';
         logoBox.style.justifyContent = 'center';
         logoBox.style.border = '1px solid #333333';
+        logoBox.style.flexShrink = '0';
         
         if (logoBase64) {
           logoBox.innerHTML = `<img src="${logoBase64}" style="width:100%; height:100%; object-fit:contain;">`;
         } else {
           logoBox.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="#333333" stroke-width="2" style="width:48px; height:48px;"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2.5 3 6 3s6-1 6-3v-5"/></svg>`;
         }
-        headerDiv.appendChild(logoBox);
+        topRowContainer.appendChild(logoBox);
         
-        const titleBox = document.createElement('div');
-        titleBox.style.width = '100%';
-        titleBox.style.display = 'flex';
-        titleBox.style.flexDirection = 'column';
-        titleBox.style.alignItems = 'center';
-        titleBox.style.justifyContent = 'center';
+        const textBlock = document.createElement('div');
+        textBlock.style.display = 'flex';
+        textBlock.style.flexDirection = 'column';
+        textBlock.style.alignItems = 'center';
         
-        const topRow = document.createElement('div');
-        topRow.style.fontSize = `${pdfFontSizeHeading + 10}px`;
-        topRow.style.fontWeight = 'bold';
-        topRow.style.textAlign = 'center';
-        topRow.textContent = univName;
-        titleBox.appendChild(topRow);
+        const univTitle = document.createElement('div');
+        univTitle.style.fontSize = `${pdfFontSizeHeading + 10}px`;
+        univTitle.style.fontWeight = 'bold';
+        univTitle.style.textAlign = 'center';
+        univTitle.textContent = univName;
+        textBlock.appendChild(univTitle);
         
-        const middleRow = document.createElement('div');
-        middleRow.style.fontSize = `${pdfFontSizeHeading + 2}px`;
-        middleRow.style.fontWeight = 'bold';
-        middleRow.style.textAlign = 'center';
-        middleRow.style.marginTop = '2px';
-        middleRow.textContent = examName;
-        titleBox.appendChild(middleRow);
+        const examTitle = document.createElement('div');
+        examTitle.style.fontSize = `${pdfFontSizeHeading + 2}px`;
+        examTitle.style.fontWeight = 'bold';
+        examTitle.style.textAlign = 'center';
+        examTitle.style.marginTop = '2px';
+        examTitle.textContent = examName;
+        textBlock.appendChild(examTitle);
         
-        const subRow = document.createElement('div');
-        subRow.style.display = 'flex';
-        subRow.style.justifyContent = 'center';
-        subRow.style.gap = isLandscape ? '30px' : '15px';
-        subRow.style.fontSize = `${pdfFontSizeHeading + 2}px`;
-        subRow.style.fontWeight = 'bold';
-        subRow.style.marginTop = '2px';
-        subRow.innerHTML = `
+        topRowContainer.appendChild(textBlock);
+        headerDiv.appendChild(topRowContainer);
+        
+        // Bottom Row: Seating Title + Date info
+        const bottomRowContainer = document.createElement('div');
+        bottomRowContainer.style.display = 'flex';
+        bottomRowContainer.style.justifyContent = 'center';
+        bottomRowContainer.style.gap = isLandscape ? '30px' : '15px';
+        bottomRowContainer.style.fontSize = `${pdfFontSizeHeading + 2}px`;
+        bottomRowContainer.style.fontWeight = 'bold';
+        bottomRowContainer.style.marginTop = '8px';
+        bottomRowContainer.innerHTML = `
           <span>ROOM-WISE SEATING ARRANGEMENT</span>
           <span>${dateSessionText}</span>
         `;
-        titleBox.appendChild(subRow);
+        headerDiv.appendChild(bottomRowContainer);
         
-        headerDiv.appendChild(titleBox);
         pageDiv.appendChild(headerDiv);
       }
       
