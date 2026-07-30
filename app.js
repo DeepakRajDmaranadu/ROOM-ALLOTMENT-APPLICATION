@@ -1366,8 +1366,7 @@ function buildPDFMarkup() {
         const bottomRowContainer = document.createElement('div');
         bottomRowContainer.style.display = 'flex';
         bottomRowContainer.style.width = '100%';
-        bottomRowContainer.style.justifyContent = (pdfHeaderAlign === 'left') ? 'flex-start' : (pdfHeaderAlign === 'right') ? 'flex-end' : 'center';
-        bottomRowContainer.style.gap = isLandscape ? '30px' : '15px';
+        bottomRowContainer.style.justifyContent = 'space-between';
         bottomRowContainer.style.fontSize = `${pdfFontSizeHeading + 2}px`;
         bottomRowContainer.style.fontWeight = 'bold';
         bottomRowContainer.style.marginTop = '8px';
