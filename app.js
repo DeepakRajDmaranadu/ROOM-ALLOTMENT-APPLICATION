@@ -35,6 +35,7 @@ let examSession = "";
 let logoBase64 = "";
 let uniformPdfColumns = false;
 let repeatPdfHeader = true;
+let pdfOrientation = "landscape";
 
 // DOM Elements
 const roomInput = document.getElementById('roomInput');
@@ -111,6 +112,7 @@ function init() {
   uniformPdfColumns = localStorage.getItem('uniformPdfColumns') === 'true';
   const storedRepeat = localStorage.getItem('repeatPdfHeader');
   repeatPdfHeader = storedRepeat !== null ? storedRepeat === 'true' : true;
+  pdfOrientation = localStorage.getItem('pdfOrientation') || 'landscape';
   
   univNameInput.value = univName;
   examNameInput.value = examName;
@@ -118,6 +120,13 @@ function init() {
   examSessionInput.value = examSession;
   uniformColumnsInput.checked = uniformPdfColumns;
   repeatHeaderInput.checked = repeatPdfHeader;
+  
+  if (pdfOrientation === 'portrait') {
+    document.getElementById('orientPortrait').checked = true;
+  } else {
+    document.getElementById('orientLandscape').checked = true;
+  }
+  
   if (logoBase64) {
     fileNameLabel.textContent = "Logo image loaded";
   }
@@ -203,6 +212,27 @@ function init() {
     localStorage.setItem('repeatPdfHeader', repeatPdfHeader ? 'true' : 'false');
     if (previewModal.classList.contains('active')) {
       showPDFPreview();
+    }
+  });
+  
+  // PDF orientation radio listeners
+  document.getElementById('orientLandscape').addEventListener('change', (e) => {
+    if (e.target.checked) {
+      pdfOrientation = 'landscape';
+      localStorage.setItem('pdfOrientation', 'landscape');
+      if (previewModal.classList.contains('active')) {
+        showPDFPreview();
+      }
+    }
+  });
+  
+  document.getElementById('orientPortrait').addEventListener('change', (e) => {
+    if (e.target.checked) {
+      pdfOrientation = 'portrait';
+      localStorage.setItem('pdfOrientation', 'portrait');
+      if (previewModal.classList.contains('active')) {
+        showPDFPreview();
+      }
     }
   });
   
@@ -1138,8 +1168,13 @@ function buildPDFMarkup() {
     return acc;
   }, {});
   
+  const isLandscape = pdfOrientation === 'landscape';
+  const pageWidth = isLandscape ? '297mm' : '210mm';
+  const pageHeight = isLandscape ? '200mm' : '287mm';
+  const blockSize = isLandscape ? 7 : 5;
+  
   const printArea = document.createElement('div');
-  printArea.style.width = '297mm';
+  printArea.style.width = pageWidth;
   printArea.style.backgroundColor = '#ffffff';
   printArea.style.color = '#000000';
   printArea.style.position = 'relative';
@@ -1172,20 +1207,19 @@ function buildPDFMarkup() {
       }
     });
     
-    // Chunk the room blocks into groups of at most 7 columns (to fit nicely on A4 Landscape page)
-    const blockSize = 7;
+    // Chunk the room blocks into groups based on orientation limits (7 for landscape, 5 for portrait)
     const pageChunks = [];
     for (let i = 0; i < roomBlocks.length; i += blockSize) {
       pageChunks.push(roomBlocks.slice(i, i + blockSize));
     }
     
-    // Render a separate A4 Landscape page for each chunk
+    // Render a separate A4 page for each chunk
     pageChunks.forEach((pageChunk, chunkIdx) => {
       const pageDiv = document.createElement('div');
       pageDiv.className = 'pdf-page';
-      pageDiv.style.width = '297mm';
-      pageDiv.style.height = '200mm'; // Safe size slightly under A4 height to prevent sub-pixel overflow breaks
-      pageDiv.style.padding = '8mm 12mm'; // Tighter padding for 100% single page safety
+      pageDiv.style.width = pageWidth;
+      pageDiv.style.height = pageHeight;
+      pageDiv.style.padding = isLandscape ? '8mm 12mm' : '8mm 8mm';
       pageDiv.style.boxSizing = 'border-box';
       pageDiv.style.backgroundColor = '#ffffff';
       pageDiv.style.color = '#000000';
@@ -1236,14 +1270,14 @@ function buildPDFMarkup() {
         titleBox.style.justifyContent = 'center';
         
         const topRow = document.createElement('div');
-        topRow.style.fontSize = '26px';
+        topRow.style.fontSize = isLandscape ? '26px' : '22px';
         topRow.style.fontWeight = 'bold';
         topRow.style.textAlign = 'center';
         topRow.textContent = univName;
         titleBox.appendChild(topRow);
         
         const middleRow = document.createElement('div');
-        middleRow.style.fontSize = '18px';
+        middleRow.style.fontSize = isLandscape ? '18px' : '15px';
         middleRow.style.fontWeight = 'bold';
         middleRow.style.textAlign = 'center';
         middleRow.style.marginTop = '2px';
@@ -1253,8 +1287,8 @@ function buildPDFMarkup() {
         const subRow = document.createElement('div');
         subRow.style.display = 'flex';
         subRow.style.justifyContent = 'center';
-        subRow.style.gap = '30px';
-        subRow.style.fontSize = '18px';
+        subRow.style.gap = isLandscape ? '30px' : '15px';
+        subRow.style.fontSize = isLandscape ? '18px' : '14px';
         subRow.style.fontWeight = 'bold';
         subRow.style.marginTop = '2px';
         subRow.innerHTML = `
@@ -1270,7 +1304,7 @@ function buildPDFMarkup() {
       // 2. Room Seating Table (matches Excel Grid structure)
       const table = document.createElement('table');
       if (uniformPdfColumns) {
-        table.style.width = `${(pageChunk.length / 7) * 100}%`;
+        table.style.width = `${(pageChunk.length / blockSize) * 100}%`;
       } else {
         table.style.width = '100%';
       }
@@ -1342,7 +1376,7 @@ function buildPDFMarkup() {
         cCell.style.border = '1px solid #000000';
         cCell.style.textAlign = 'center';
         cCell.style.fontWeight = 'bold';
-        cCell.style.fontSize = '18px';
+        cCell.style.fontSize = isLandscape ? '18px' : '15px';
         cCell.style.padding = '4px';
         cCell.style.wordWrap = 'break-word';
         cCell.textContent = `${header.course} | ${header.subject} (${header.time || ''})`;
@@ -1359,7 +1393,7 @@ function buildPDFMarkup() {
           sCell.style.border = '1px solid #000000';
           sCell.style.textAlign = 'center';
           sCell.style.fontWeight = 'bold';
-          sCell.style.fontSize = '15px';
+          sCell.style.fontSize = isLandscape ? '15px' : '13px';
           sCell.style.padding = '4px 2px';
           sCell.style.wordWrap = 'break-word';
           sCell.style.whiteSpace = 'normal';
@@ -1381,7 +1415,7 @@ function buildPDFMarkup() {
           const slCell = document.createElement('td');
           slCell.style.border = '1px solid #000000';
           slCell.style.textAlign = 'center';
-          slCell.style.fontSize = '14px';
+          slCell.style.fontSize = isLandscape ? '14px' : '12px';
           slCell.style.padding = '4px 2px';
           slCell.style.wordWrap = 'break-word';
           slCell.style.whiteSpace = 'normal';
@@ -1389,7 +1423,7 @@ function buildPDFMarkup() {
           const regCell = document.createElement('td');
           regCell.style.border = '1px solid #000000';
           regCell.style.textAlign = 'center';
-          regCell.style.fontSize = '15px';
+          regCell.style.fontSize = isLandscape ? '15px' : '13px';
           regCell.style.padding = '4px 2px';
           regCell.style.wordWrap = 'break-word';
           regCell.style.whiteSpace = 'normal';
@@ -1417,7 +1451,7 @@ function buildPDFMarkup() {
         coCell.style.border = '1px solid #000000';
         coCell.style.textAlign = 'center';
         coCell.style.fontWeight = 'bold';
-        coCell.style.fontSize = '16px';
+        coCell.style.fontSize = isLandscape ? '16px' : '14px';
         coCell.style.padding = '6px';
         coCell.textContent = `COUNT - ${header.totalStudentsCount}`;
         countRow.appendChild(coCell);
@@ -1452,7 +1486,7 @@ async function downloadPDF() {
     printWrapper.style.position = 'absolute';
     printWrapper.style.left = '0';
     printWrapper.style.top = '0';
-    printWrapper.style.width = '297mm';
+    printWrapper.style.width = (pdfOrientation === 'landscape') ? '297mm' : '210mm';
     printWrapper.style.zIndex = '-9999';
     printWrapper.style.overflow = 'visible';
     document.body.appendChild(printWrapper);
@@ -1466,7 +1500,7 @@ async function downloadPDF() {
       filename:     `${formattedDate ? `${formattedDate}-` : ''}${examSession ? `${examSession}-` : ''}room allotment.pdf`,
       image:        { type: 'jpeg', quality: 0.98 },
       html2canvas:  { scale: 2, useCORS: true, logging: false, scrollX: 0, scrollY: 0 },
-      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: pdfOrientation },
       pagebreak:    { mode: 'css' }
     };
     
@@ -1491,6 +1525,13 @@ function showPDFPreview() {
   
   // Clear previous preview contents
   previewBody.innerHTML = '';
+  
+  // Apply portrait layout sizing class if toggled
+  if (pdfOrientation === 'portrait') {
+    previewBody.classList.add('portrait-layout');
+  } else {
+    previewBody.classList.remove('portrait-layout');
+  }
   
   // Compile print layout
   const printArea = buildPDFMarkup();
