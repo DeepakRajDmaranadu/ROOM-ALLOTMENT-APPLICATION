@@ -153,6 +153,14 @@ function init() {
     fileNameLabel.textContent = "Logo image loaded";
   }
   
+  // Intercept Ctrl+P or Cmd+P to open interactive PDF Preview modal
+  window.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 'P')) {
+      e.preventDefault();
+      showPDFPreview();
+    }
+  });
+  
   // Settings panel toggle
   settingsToggleBtn.addEventListener('click', () => {
     settingsPanel.classList.toggle('expanded');
