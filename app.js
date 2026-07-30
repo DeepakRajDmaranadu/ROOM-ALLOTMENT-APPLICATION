@@ -38,6 +38,7 @@ let repeatPdfHeader = true;
 let pdfOrientation = "landscape";
 let pdfFontSizeHeading = 16;
 let pdfFontSizeValue = 14;
+let pdfLogoSize = 72;
 
 // DOM Elements
 const roomInput = document.getElementById('roomInput');
@@ -77,6 +78,7 @@ const uniformColumnsInput = document.getElementById('uniformColumnsInput');
 const repeatHeaderInput = document.getElementById('repeatHeaderInput');
 const pdfFontSizeHeadingInput = document.getElementById('pdfFontSizeHeadingInput');
 const pdfFontSizeValueInput = document.getElementById('pdfFontSizeValueInput');
+const pdfLogoSizeInput = document.getElementById('pdfLogoSizeInput');
 
 // Load initial state
 function init() {
@@ -119,6 +121,7 @@ function init() {
   pdfOrientation = localStorage.getItem('pdfOrientation') || 'landscape';
   pdfFontSizeHeading = parseInt(localStorage.getItem('pdfFontSizeHeading'), 10) || 16;
   pdfFontSizeValue = parseInt(localStorage.getItem('pdfFontSizeValue'), 10) || 14;
+  pdfLogoSize = parseInt(localStorage.getItem('pdfLogoSize'), 10) || 72;
   
   univNameInput.value = univName;
   examNameInput.value = examName;
@@ -128,6 +131,7 @@ function init() {
   repeatHeaderInput.checked = repeatPdfHeader;
   pdfFontSizeHeadingInput.value = pdfFontSizeHeading;
   pdfFontSizeValueInput.value = pdfFontSizeValue;
+  pdfLogoSizeInput.value = pdfLogoSize;
   
   if (pdfOrientation === 'portrait') {
     document.getElementById('orientPortrait').checked = true;
@@ -264,6 +268,18 @@ function init() {
     pdfFontSizeValue = val;
     pdfFontSizeValueInput.value = val;
     localStorage.setItem('pdfFontSizeValue', val);
+    if (previewModal.classList.contains('active')) {
+      showPDFPreview();
+    }
+  });
+  
+  pdfLogoSizeInput.addEventListener('change', (e) => {
+    let val = parseInt(e.target.value, 10);
+    if (isNaN(val) || val < 30) val = 30;
+    if (val > 150) val = 150;
+    pdfLogoSize = val;
+    pdfLogoSizeInput.value = val;
+    localStorage.setItem('pdfLogoSize', val);
     if (previewModal.classList.contains('active')) {
       showPDFPreview();
     }
@@ -1285,8 +1301,8 @@ function buildPDFMarkup() {
         topRowContainer.style.width = '100%';
         
         const logoBox = document.createElement('div');
-        logoBox.style.width = '72px';
-        logoBox.style.height = '72px';
+        logoBox.style.width = `${pdfLogoSize}px`;
+        logoBox.style.height = `${pdfLogoSize}px`;
         logoBox.style.display = 'flex';
         logoBox.style.alignItems = 'center';
         logoBox.style.justifyContent = 'center';
@@ -1296,7 +1312,8 @@ function buildPDFMarkup() {
         if (logoBase64) {
           logoBox.innerHTML = `<img src="${logoBase64}" style="width:100%; height:100%; object-fit:contain;">`;
         } else {
-          logoBox.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="#333333" stroke-width="2" style="width:48px; height:48px;"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2.5 3 6 3s6-1 6-3v-5"/></svg>`;
+          const svgSize = Math.round(pdfLogoSize * 0.66);
+          logoBox.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="#333333" stroke-width="2" style="width:${svgSize}px; height:${svgSize}px;"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2.5 3 6 3s6-1 6-3v-5"/></svg>`;
         }
         topRowContainer.appendChild(logoBox);
         
