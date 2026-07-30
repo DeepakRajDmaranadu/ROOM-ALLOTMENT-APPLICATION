@@ -1205,7 +1205,6 @@ function buildPDFMarkup() {
         headerDiv.style.display = 'flex';
         headerDiv.style.justifyContent = 'center';
         headerDiv.style.alignItems = 'center';
-        headerDiv.style.borderBottom = '2px solid #000000';
         headerDiv.style.paddingBottom = '6px';
         headerDiv.style.marginBottom = '10px';
         headerDiv.style.minHeight = '72px';
