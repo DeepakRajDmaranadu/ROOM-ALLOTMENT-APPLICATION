@@ -1329,7 +1329,6 @@ function buildPDFMarkup() {
         logoBox.style.display = 'flex';
         logoBox.style.alignItems = 'center';
         logoBox.style.justifyContent = 'center';
-        logoBox.style.border = '1px solid #333333';
         logoBox.style.flexShrink = '0';
         
         if (logoBase64) {
