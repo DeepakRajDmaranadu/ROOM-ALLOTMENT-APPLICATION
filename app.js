@@ -1320,10 +1320,11 @@ function buildPDFMarkup() {
       if (globalPageIndex > 0) {
         pageDiv.style.pageBreakBefore = 'always';
       }
+      const isFirstPageOfDocument = (globalPageIndex === 0);
       globalPageIndex++;
       
       // 1. University Header Banner (matches Excel rows 1-3 format)
-      if (repeatPdfHeader || chunkIdx === 0) {
+      if (repeatPdfHeader || isFirstPageOfDocument) {
         const headerDiv = document.createElement('div');
         headerDiv.style.position = 'relative';
         headerDiv.style.display = 'flex';
