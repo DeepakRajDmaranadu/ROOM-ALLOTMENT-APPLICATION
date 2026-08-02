@@ -82,8 +82,9 @@ const pdfFontSizeHeadingInput = document.getElementById('pdfFontSizeHeadingInput
 const pdfFontSizeValueInput = document.getElementById('pdfFontSizeValueInput');
 const pdfLogoSizeInput = document.getElementById('pdfLogoSizeInput');
 const pdfHeaderAlignInput = document.getElementById('pdfHeaderAlignInput');
-const importBtn = document.getElementById('importBtn');
-const importFileInput = document.getElementById('importFileInput');
+const exportJsonBtn = document.getElementById('exportJsonBtn');
+const importJsonBtn = document.getElementById('importJsonBtn');
+const importJsonFileInput = document.getElementById('importJsonFileInput');
 
 // Load initial state
 function init() {
@@ -325,11 +326,12 @@ function init() {
   // Clear button click
   clearBtn.addEventListener('click', clearAllEntries);
   
-  // Import button click
-  importBtn.addEventListener('click', () => {
-    importFileInput.click();
+  // JSON Backup / Restore listeners
+  exportJsonBtn.addEventListener('click', exportJSON);
+  importJsonBtn.addEventListener('click', () => {
+    importJsonFileInput.click();
   });
-  importFileInput.addEventListener('change', handleExcelImport);
+  importJsonFileInput.addEventListener('change', handleJSONImport);
   
   // Download button click
   downloadBtn.addEventListener('click', downloadExcel);
@@ -1964,6 +1966,136 @@ async function handleExcelImport(e) {
     }
   };
   reader.readAsArrayBuffer(file);
+}
+
+// Export complete current allotment state to a downloaded JSON file
+function exportJSON() {
+  if (entries.length === 0) {
+    alert("No entries to export.");
+    return;
+  }
+  const state = {
+    univName,
+    examName,
+    examDate,
+    examSession,
+    logoBase64,
+    uniformPdfColumns,
+    repeatPdfHeader,
+    pdfOrientation,
+    pdfFontSizeHeading,
+    pdfFontSizeValue,
+    pdfLogoSize,
+    pdfHeaderAlign,
+    roomRowCounts,
+    pageUniformColumns,
+    entries
+  };
+  
+  const formattedDate = formatDate(examDate);
+  const filename = `${formattedDate ? `${formattedDate}-` : ''}${examSession ? `${examSession}-` : ''}room-allotment-backup.json`;
+  
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  
+  const downloadAnchor = document.createElement('a');
+  downloadAnchor.setAttribute("href", url);
+  downloadAnchor.setAttribute("download", filename);
+  document.body.appendChild(downloadAnchor);
+  downloadAnchor.click();
+  
+  document.body.removeChild(downloadAnchor);
+  URL.revokeObjectURL(url);
+}
+
+// Import and restore complete current allotment state from an uploaded JSON file
+function handleJSONImport(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    try {
+      const data = JSON.parse(evt.target.result);
+      if (!data.entries) {
+        alert("Invalid backup file: 'entries' array is missing.");
+        return;
+      }
+      
+      if (window.confirm(`Successfully read backup file with ${data.entries.length} student entries. Overwrite current workspace?`)) {
+        // Apply state
+        entries = data.entries || [];
+        roomRowCounts = data.roomRowCounts || {};
+        pageUniformColumns = data.pageUniformColumns || {};
+        
+        univName = data.univName || "UNIVERSITY NAME";
+        examName = data.examName || "EXAMINATION NAME";
+        examDate = data.examDate || "";
+        examSession = data.examSession || "";
+        logoBase64 = data.logoBase64 || "";
+        
+        uniformPdfColumns = data.uniformPdfColumns !== undefined ? data.uniformPdfColumns : false;
+        repeatPdfHeader = data.repeatPdfHeader !== undefined ? data.repeatPdfHeader : true;
+        pdfOrientation = data.pdfOrientation || "landscape";
+        pdfFontSizeHeading = parseInt(data.pdfFontSizeHeading, 10) || 16;
+        pdfFontSizeValue = parseInt(data.pdfFontSizeValue, 10) || 14;
+        pdfLogoSize = parseInt(data.pdfLogoSize, 10) || 72;
+        pdfHeaderAlign = data.pdfHeaderAlign || "center";
+        
+        // Persist all to localStorage
+        localStorage.setItem('roomEntries', JSON.stringify(entries));
+        localStorage.setItem('roomRowCounts', JSON.stringify(roomRowCounts));
+        localStorage.setItem('pageUniformColumns', JSON.stringify(pageUniformColumns));
+        
+        localStorage.setItem('univName', univName);
+        localStorage.setItem('examName', examName);
+        localStorage.setItem('examDate', examDate);
+        localStorage.setItem('examSession', examSession);
+        localStorage.setItem('logoBase64', logoBase64);
+        
+        localStorage.setItem('uniformPdfColumns', uniformPdfColumns ? 'true' : 'false');
+        localStorage.setItem('repeatPdfHeader', repeatPdfHeader ? 'true' : 'false');
+        localStorage.setItem('pdfOrientation', pdfOrientation);
+        localStorage.setItem('pdfFontSizeHeading', pdfFontSizeHeading);
+        localStorage.setItem('pdfFontSizeValue', pdfFontSizeValue);
+        localStorage.setItem('pdfLogoSize', pdfLogoSize);
+        localStorage.setItem('pdfHeaderAlign', pdfHeaderAlign);
+        
+        // Sync UI input values
+        univNameInput.value = univName;
+        examNameInput.value = examName;
+        examDateInput.value = examDate;
+        examSessionInput.value = examSession;
+        uniformColumnsInput.checked = uniformPdfColumns;
+        repeatHeaderInput.checked = repeatPdfHeader;
+        pdfFontSizeHeadingInput.value = pdfFontSizeHeading;
+        pdfFontSizeValueInput.value = pdfFontSizeValue;
+        pdfLogoSizeInput.value = pdfLogoSize;
+        pdfHeaderAlignInput.value = pdfHeaderAlign;
+        
+        if (pdfOrientation === 'portrait') {
+          document.getElementById('orientPortrait').checked = true;
+        } else {
+          document.getElementById('orientLandscape').checked = true;
+        }
+        
+        if (logoBase64) {
+          fileNameLabel.textContent = "Logo image loaded";
+        } else {
+          fileNameLabel.textContent = "No logo selected";
+        }
+        
+        render();
+        alert("Workspace restored from JSON backup successfully!");
+      }
+    } catch (err) {
+      console.error("Failed to parse JSON backup file", err);
+      alert("Error parsing JSON backup file: " + err.message);
+    } finally {
+      importJsonFileInput.value = "";
+    }
+  };
+  reader.readAsText(file);
 }
 
 // Boot application
