@@ -82,6 +82,8 @@ const pdfFontSizeHeadingInput = document.getElementById('pdfFontSizeHeadingInput
 const pdfFontSizeValueInput = document.getElementById('pdfFontSizeValueInput');
 const pdfLogoSizeInput = document.getElementById('pdfLogoSizeInput');
 const pdfHeaderAlignInput = document.getElementById('pdfHeaderAlignInput');
+const importBtn = document.getElementById('importBtn');
+const importFileInput = document.getElementById('importFileInput');
 
 // Load initial state
 function init() {
@@ -322,6 +324,12 @@ function init() {
   
   // Clear button click
   clearBtn.addEventListener('click', clearAllEntries);
+  
+  // Import button click
+  importBtn.addEventListener('click', () => {
+    importFileInput.click();
+  });
+  importFileInput.addEventListener('change', handleExcelImport);
   
   // Download button click
   downloadBtn.addEventListener('click', downloadExcel);
@@ -1724,6 +1732,238 @@ function updateThemeToggleIcon(isDark) {
     `;
     themeToggleBtn.setAttribute('title', 'Switch to Dark Theme');
   }
+}
+
+// Import and restore complete project state from an uploaded Excel file
+async function handleExcelImport(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.onload = async function(evt) {
+    try {
+      const buffer = evt.target.result;
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(buffer);
+      
+      const sheet = workbook.getWorksheet("Room Allotments") || workbook.getWorksheet(1) || workbook.worksheets[0];
+      if (!sheet) {
+        alert("No worksheet found in the uploaded Excel workbook.");
+        return;
+      }
+      
+      // Parse header settings
+      const row1Val = sheet.getRow(1).getCell(1).value;
+      const row2Val = sheet.getRow(2).getCell(1).value;
+      
+      let tempUniv = "";
+      let tempExam = "";
+      
+      if (row1Val && typeof row1Val === 'string') tempUniv = row1Val.trim();
+      if (row2Val && typeof row2Val === 'string') tempExam = row2Val.trim();
+      
+      // Extract date & session text from row 3 if present
+      let row3DateCellVal = "";
+      for (let c = 1; c <= 20; c++) {
+        const val = sheet.getRow(3).getCell(c).value;
+        if (val && typeof val === 'string' && val.includes("DATE:")) {
+          row3DateCellVal = val;
+          break;
+        }
+      }
+      
+      let tempDate = "";
+      let tempSession = "";
+      if (row3DateCellVal) {
+        const dateMatch = row3DateCellVal.match(/DATE:\s*([\d-]+)/i);
+        if (dateMatch) {
+          const dParts = dateMatch[1].split('-');
+          if (dParts.length === 3) {
+            tempDate = `${dParts[2]}-${dParts[1]}-${dParts[0]}`;
+          }
+        }
+        const sessionMatch = row3DateCellVal.match(/\((.*?)\)/);
+        if (sessionMatch) {
+          const rawSess = sessionMatch[1].toLowerCase();
+          if (rawSess.includes("morning")) tempSession = "Morning";
+          else if (rawSess.includes("afternoon")) tempSession = "Afternoon";
+        }
+      }
+      
+      // Parse logo image if embedded in sheet
+      let tempLogo = "";
+      if (sheet.getImages && sheet.getImages().length > 0) {
+        try {
+          const imgObj = sheet.getImages()[0];
+          const media = workbook.model.media[imgObj.imageId];
+          if (media && media.buffer) {
+            // Convert buffer to Base64 manually
+            let binary = "";
+            const bytes = new Uint8Array(media.buffer);
+            const len = bytes.byteLength;
+            for (let i = 0; i < len; i++) {
+              binary += String.fromCharCode(bytes[i]);
+            }
+            const base64 = btoa(binary);
+            const mime = media.type === 'jpg' || media.type === 'jpeg' ? 'image/jpeg' : 'image/png';
+            tempLogo = `data:${mime};base64,${base64}`;
+          }
+        } catch (imgErr) {
+          console.error("Could not extract image from Excel file:", imgErr);
+        }
+      }
+      
+      // Scan rows to extract student allotment entries
+      const newEntries = [];
+      const tempRoomRowCounts = {};
+      
+      let currentRoomName = "";
+      const rowCount = sheet.rowCount;
+      
+      for (let rIdx = 1; rIdx <= rowCount; rIdx++) {
+        const row = sheet.getRow(rIdx);
+        const cell1Val = row.getCell(1).value;
+        
+        if (cell1Val && typeof cell1Val === 'string' && cell1Val.startsWith("ROOM-")) {
+          currentRoomName = cell1Val.substring(5).trim();
+          
+          const courseRow = sheet.getRow(rIdx + 1);
+          const subjectRow = sheet.getRow(rIdx + 2);
+          const subheaderRow = sheet.getRow(rIdx + 3);
+          
+          // Let's identify the course blocks in this room
+          const blocks = [];
+          let col = 1;
+          while (col <= 100) {
+            const courseVal = courseRow.getCell(col).value;
+            if (courseVal) {
+              let courseName = String(courseVal).trim();
+              let timeStr = "";
+              const timeMatch = courseName.match(/\((.*?)\)$/);
+              if (timeMatch) {
+                timeStr = timeMatch[1].trim();
+                courseName = courseName.replace(/\s*\(.*?\)$/, "").trim();
+              }
+              
+              const subjectVal = subjectRow.getCell(col).value || "";
+              const subjectName = String(subjectVal).trim();
+              
+              let span = 1;
+              let checkCol = col + 1;
+              while (checkCol <= 100 && !courseRow.getCell(checkCol).value && subheaderRow.getCell(checkCol).value) {
+                span++;
+                checkCol++;
+              }
+              
+              blocks.push({
+                startCol: col,
+                spanCount: span,
+                course: courseName,
+                time: timeStr || tempSession || "",
+                subject: subjectName
+              });
+              col += span;
+            } else {
+              if (!subheaderRow.getCell(col).value) {
+                break;
+              }
+              col++;
+            }
+          }
+          
+          // Count student rows in this room until we hit COUNT row
+          let dataRowOffset = 4;
+          let studentRowsInRoom = 0;
+          while (rIdx + dataRowOffset <= rowCount) {
+            const dataRow = sheet.getRow(rIdx + dataRowOffset);
+            const val = dataRow.getCell(1).value;
+            if (val && typeof val === 'string' && val.startsWith("COUNT -")) {
+              break;
+            }
+            studentRowsInRoom++;
+            dataRowOffset++;
+          }
+          
+          if (currentRoomName) {
+            tempRoomRowCounts[currentRoomName] = studentRowsInRoom;
+          }
+          
+          // Extract student IDs
+          for (let studentRowIdx = 0; studentRowIdx < studentRowsInRoom; studentRowIdx++) {
+            const dataRow = sheet.getRow(rIdx + 4 + studentRowIdx);
+            
+            blocks.forEach(block => {
+              const pairsCount = Math.floor(block.spanCount / 2);
+              for (let p = 0; p < pairsCount; p++) {
+                const regCol = block.startCol + (2 * p) + 1;
+                const regVal = dataRow.getCell(regCol).value;
+                if (regVal) {
+                  newEntries.push({
+                    room: currentRoomName,
+                    time: block.time,
+                    course: block.course,
+                    subject: block.subject,
+                    studentId: String(regVal).trim().toUpperCase()
+                  });
+                }
+              }
+            });
+          }
+          
+          rIdx += dataRowOffset;
+        }
+      }
+      
+      if (newEntries.length === 0) {
+        alert("Could not extract any student allotment entries from the Excel file. Please make sure the uploaded file is a valid Excel file downloaded from this application.");
+        return;
+      }
+      
+      if (window.confirm(`Successfully parsed ${newEntries.length} student entries across ${Object.keys(tempRoomRowCounts).length} rooms. Load this data? (This will replace your current entries)`)) {
+        entries = newEntries;
+        saveToStorage();
+        
+        roomRowCounts = tempRoomRowCounts;
+        localStorage.setItem('roomRowCounts', JSON.stringify(roomRowCounts));
+        
+        if (tempUniv) {
+          univName = tempUniv;
+          localStorage.setItem('univName', univName);
+          univNameInput.value = univName;
+        }
+        if (tempExam) {
+          examName = tempExam;
+          localStorage.setItem('examName', examName);
+          examNameInput.value = examName;
+        }
+        if (tempDate) {
+          examDate = tempDate;
+          localStorage.setItem('examDate', examDate);
+          examDateInput.value = examDate;
+        }
+        if (tempSession) {
+          examSession = tempSession;
+          localStorage.setItem('examSession', examSession);
+          examSessionInput.value = examSession;
+        }
+        if (tempLogo) {
+          logoBase64 = tempLogo;
+          localStorage.setItem('logoBase64', logoBase64);
+          fileNameLabel.textContent = "Logo restored from Excel";
+        }
+        
+        render();
+        alert("Allotment plan restored successfully!");
+      }
+      
+    } catch (err) {
+      console.error("Failed to parse Excel file", err);
+      alert("Error parsing Excel file: " + err.message);
+    } finally {
+      importFileInput.value = "";
+    }
+  };
+  reader.readAsArrayBuffer(file);
 }
 
 // Boot application

@@ -633,8 +633,10 @@ body {
     flex-direction: column;
     gap: 12px;
   }
-  .clear-btn {
+  .header-left-actions {
     order: 2;
+    width: 100%;
+    justify-content: center;
   }
   .header-actions-group {
     width: 100%;
@@ -1296,4 +1298,10 @@ body {
 .preview-select:focus {
   border-color: var(--accent-primary);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.import-btn:hover {
+  background-color: rgba(34, 197, 94, 0.2) !important;
+  border-color: rgba(34, 197, 94, 0.7) !important;
+  color: #22c55e !important;
 }
