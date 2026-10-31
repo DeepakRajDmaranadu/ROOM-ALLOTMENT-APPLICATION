@@ -85,6 +85,7 @@ const pdfHeaderAlignInput = document.getElementById('pdfHeaderAlignInput');
 const exportJsonBtn = document.getElementById('exportJsonBtn');
 const importJsonBtn = document.getElementById('importJsonBtn');
 const importJsonFileInput = document.getElementById('importJsonFileInput');
+const toastNotification = document.getElementById('toastNotification');
 
 // Load initial state
 function init() {
@@ -386,6 +387,18 @@ function setupFilters() {
   studentIdInput.addEventListener('input', (e) => {
     e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
   });
+
+  // Handle Excel multi-row paste directly into the Student ID input box
+  studentIdInput.addEventListener('paste', (e) => {
+    const pasteData = (e.clipboardData || window.clipboardData).getData('text');
+    if (!pasteData) return;
+    
+    const items = extractRegisterNumbers(pasteData);
+    if (items.length > 1) {
+      e.preventDefault();
+      handleDirectBulkInsert(items);
+    }
+  });
   
   // Set up Student ID special keys: Enter (submit), ArrowUp/Down (inc/dec trailing number)
   studentIdInput.addEventListener('keydown', (e) => {
@@ -434,12 +447,21 @@ function addEntry() {
   const time = timeInput.value.trim();
   const course = courseInput.value.trim();
   const subject = subjectInput.value.trim();
-  const studentId = studentIdInput.value.trim();
+  const rawStudentId = studentIdInput.value.trim();
   
-  if (!room || !time || !course || !subject || !studentId) {
+  if (!room || !time || !course || !subject || !rawStudentId) {
     alert("Please fill all fields");
     return;
   }
+
+  // Check if multiple register numbers were entered/pasted
+  const items = extractRegisterNumbers(rawStudentId);
+  if (items.length > 1) {
+    handleDirectBulkInsert(items);
+    return;
+  }
+  
+  const studentId = items[0] || rawStudentId.toUpperCase().replace(/[^A-Z0-9]/g, '');
   
   // Push entry
   entries.push({ room, time, course, subject, studentId });
@@ -469,6 +491,153 @@ function addEntry() {
       newRow.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
     }
   }, 80);
+}
+
+// ==========================================================================
+// Direct Bulk Paste Extraction & Insertion Logic
+// ==========================================================================
+
+// Parse Excel rows, tab columns, commas, and multiline register numbers
+function extractRegisterNumbers(rawText) {
+  if (!rawText || typeof rawText !== 'string') return [];
+  const trimmed = rawText.trim();
+  if (!trimmed) return [];
+
+  const lines = trimmed.split(/\r?\n/);
+  const items = [];
+
+  // Check if lines contain tab delimiters (multi-column copy from Excel)
+  const tabLines = lines.filter(l => l.includes('\t'));
+  let chosenCol = -1;
+
+  if (tabLines.length > 0 && tabLines.length >= lines.filter(l => l.trim().length > 0).length * 0.3) {
+    // Multi-column data from Excel detected! Find which column has register numbers
+    const colScores = {};
+    tabLines.forEach(line => {
+      const parts = line.split('\t');
+      parts.forEach((p, idx) => {
+        const val = p.trim();
+        if (!val) return;
+        if (!colScores[idx]) colScores[idx] = 0;
+        if (/[A-Za-z]/.test(val) && /\d/.test(val)) {
+          colScores[idx] += 10;
+        } else if (val.length >= 4 && !/^\d{1,3}$/.test(val)) {
+          colScores[idx] += 3;
+        } else if (/^\d{1,3}$/.test(val)) {
+          colScores[idx] += 1;
+        }
+      });
+    });
+
+    let bestScore = -1;
+    for (const [colIdx, score] of Object.entries(colScores)) {
+      if (score > bestScore) {
+        bestScore = score;
+        chosenCol = parseInt(colIdx, 10);
+      }
+    }
+  }
+
+  lines.forEach(line => {
+    let text = line.trim();
+    if (!text) return;
+
+    if (chosenCol !== -1 && text.includes('\t')) {
+      const parts = text.split('\t');
+      text = parts[chosenCol] ? parts[chosenCol].trim() : '';
+    } else if (text.includes(',') && !text.includes('\t')) {
+      const parts = text.split(',');
+      parts.forEach(p => cleanAndPush(p));
+      return;
+    }
+
+    if (text) {
+      cleanAndPush(text);
+    }
+  });
+
+  function cleanAndPush(val) {
+    let clean = val.replace(/^["']|["']$/g, '').trim().toUpperCase();
+    clean = clean.replace(/[^A-Z0-9\-\/]/g, '');
+    if (clean) {
+      items.push(clean);
+    }
+  }
+
+  return items;
+}
+
+// Directly insert multiple register numbers into active room/course/subject
+function handleDirectBulkInsert(items) {
+  const room = roomInput.value.trim();
+  const time = timeInput.value.trim();
+  const course = courseInput.value.trim();
+  const subject = subjectInput.value.trim();
+
+  if (!room || !time || !course || !subject) {
+    alert("Please fill Room Number, Time, Course, and Subject before pasting multiple student register numbers.");
+    if (!room) roomInput.focus();
+    else if (!time) timeInput.focus();
+    else if (!course) courseInput.focus();
+    else if (!subject) subjectInput.focus();
+    return;
+  }
+
+  if (!items || items.length === 0) return;
+
+  // Append all entries
+  items.forEach(studentId => {
+    entries.push({ room, time, course, subject, studentId });
+  });
+
+  saveToStorage();
+
+  // Suggest next incremented ID from the last inserted item
+  const lastId = items[items.length - 1];
+  const match = lastId.match(/^(.*?)(\d+)$/);
+  if (match) {
+    const prefix = match[1];
+    const numStr = match[2];
+    const nextNum = parseInt(numStr, 10) + 1;
+    const padded = String(nextNum).padStart(numStr.length, '0');
+    studentIdInput.value = prefix + padded;
+  } else {
+    studentIdInput.value = '';
+  }
+
+  render();
+  studentIdInput.focus();
+
+  showToast(`Added ${items.length} students to Room ${room} (${course})!`, 'success');
+
+  // Scroll to the newly added row
+  const newIndex = entries.length - 1;
+  setTimeout(() => {
+    const newRow = document.querySelector(`.table-row[data-student-index="${newIndex}"]`);
+    if (newRow) {
+      newRow.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+    }
+  }, 80);
+}
+
+// Floating Toast Notification
+let toastTimer = null;
+function showToast(message, type = 'success') {
+  if (!toastNotification) return;
+  if (toastTimer) clearTimeout(toastTimer);
+
+  toastNotification.className = `toast-notification active ${type}`;
+  toastNotification.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+      <polyline points="22 4 12 14.01 9 11.01"></polyline>
+    </svg>
+    <span>${message}</span>
+  `;
+
+  toastTimer = setTimeout(() => {
+    toastNotification.classList.remove('active');
+  }, 3500);
 }
 
 // Delete an entry by its master index

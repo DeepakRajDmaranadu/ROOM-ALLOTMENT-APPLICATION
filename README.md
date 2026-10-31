@@ -13,6 +13,7 @@ Live Target Reference: [https://rrexamv2.netlify.app](https://rrexamv2.netlify.a
 
 2. **Smart Forms & Filters**:
    - Validation filtering on forms inputs ensuring only valid text blocks are input for Rooms, Times, Courses, Subjects, and Student IDs.
+   - **Direct Bulk Paste from Excel**: Paste an entire copied column from Excel directly into the Student ID field (`Ctrl+V`). Automatically parses multiple register numbers, skips multi-column metadata, cleans characters, and adds all students at once without any extra windows or popups.
    - **Auto-Increment**: Suggests and fills the next incremented Student ID based on numerical trailing patterns (e.g. `CSE001` auto-increments to `CSE002` on submit).
    - **Keyboard Shortcuts**: Use `Arrow Up` and `Arrow Down` inside the Student ID field to increment/decrement numbers, and hit `Enter` to submit.
 
